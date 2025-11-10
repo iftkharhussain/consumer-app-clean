@@ -4,8 +4,9 @@
   "description": "Consumer App API - Phase 1: Question flow to Quote result with Fortus integration",
   "main": "src/app.js",
   "scripts": {
-    "start": "node src/app.js",
-    "dev": "nodemon src/app.js",
+    "start:local": "nodemon -r dotenv/config src/app.js dotenv_config_path=.env.local",
+    "start:dev": "nodemon -r dotenv/config src/app.js dotenv_config_path=.env.dev",
+    "start:production": "node -r dotenv/config src/app.js dotenv_config_path=.env.production",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
