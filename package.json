@@ -1,7 +1,7 @@
 {
   "name": "consumer-app-api",
   "version": "1.0.0",
-  "description": "Consumer App API - Phase 1: Question flow to Quote result with Fortus integration",
+  "description": "Consumer App API - Lead Management System",
   "main": "src/app.js",
   "scripts": {
     "start:local": "nodemon -r dotenv/config src/app.js dotenv_config_path=.env.local",
@@ -12,10 +12,9 @@
   "keywords": [
     "express",
     "mongoose",
-    "fortus",
-    "paperform",
     "insurance",
-    "quotes"
+    "leads",
+    "api"
   ],
   "author": "",
   "license": "ISC",
@@ -25,7 +24,6 @@
     "dotenv": "^16.3.1",
     "cors": "^2.8.5",
     "axios": "^1.5.1",
-    "fast-xml-parser": "^4.3.2",
     "uuid": "^9.0.1",
     "morgan": "^1.10.0"
   },

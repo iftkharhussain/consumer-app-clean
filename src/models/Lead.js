@@ -1,8 +1,7 @@
 const mongoose = require('mongoose');
 
 /**
- * Lead Schema - Stores lead information from Paperform
- * This connects to the existing Lead Management System database
+ * Lead Schema - Stores lead information
  */
 const leadSchema = new mongoose.Schema({
   // Personal Information
@@ -83,39 +82,23 @@ const leadSchema = new mongoose.Schema({
     description: String,
   }],
   
-  // Quote Preferences
+  // Coverage Preferences
   coveragePreferences: {
-    type: mongoose.Schema.Types.Mixed,
-  },
-  
-  // Paperform submission data
-  paperformSubmissionId: {
-    type: String,
-    unique: true,
-    sparse: true,
-  },
-  paperformData: {
     type: mongoose.Schema.Types.Mixed,
   },
   
   // Lead Status
   status: {
     type: String,
-    enum: ['new', 'quoted', 'contacted', 'converted', 'closed'],
+    enum: ['new', 'contacted', 'converted', 'closed'],
     default: 'new',
   },
   
   // Source tracking
   source: {
     type: String,
-    default: 'paperform',
+    default: 'web',
   },
-  
-  // Associated quotes
-  quotes: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Quote',
-  }],
 }, {
   timestamps: true,
 });
@@ -123,7 +106,6 @@ const leadSchema = new mongoose.Schema({
 // Indexes
 leadSchema.index({ email: 1 });
 leadSchema.index({ phone: 1 });
-leadSchema.index({ paperformSubmissionId: 1 });
 leadSchema.index({ status: 1, createdAt: -1 });
 leadSchema.index({ 'address.postalCode': 1 });
 

@@ -1,6 +1,5 @@
 /**
  * Consumer App API - Main Application File
- * Phase 1: Question flow to Quote result with Fortus integration
  */
 
 const express = require('express');
@@ -37,12 +36,10 @@ app.use('/api', routes);
 app.get('/', (req, res) => {
   res.json({
     success: true,
-    message: 'Consumer App API - Phase 1',
+    message: 'Consumer App API',
     version: '1.0.0',
     endpoints: {
       health: '/api/health',
-      paperformWebhook: '/api/paperform/webhook',
-      quotes: '/api/quotes',
       leads: '/api/leads',
     },
     documentation: 'See README.md for full API documentation',
