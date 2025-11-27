@@ -4,7 +4,6 @@
 
 const express = require('express');
 const cors = require('cors');
-const morgan = require('morgan');
 const connectDB = require('./config/database');
 const config = require('./config');
 const logger = require('./utils/logger');
@@ -23,10 +22,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Request logging
-if (config.env === 'development') {
-  app.use(morgan('dev'));
-}
+// Request logging (only errors and slow requests)
 app.use(requestLogger);
 
 // API Routes

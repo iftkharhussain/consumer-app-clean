@@ -2,7 +2,7 @@
  * Lead Service - Handles lead creation and management
  */
 
-const Lead = require('../models/Lead');
+const Lead = require('../schema/Lead');
 const logger = require('../utils/logger');
 
 /**
