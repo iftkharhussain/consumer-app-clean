@@ -7,6 +7,7 @@
     "start:local": "nodemon -r dotenv/config src/app.js dotenv_config_path=.env.local",
     "start:dev": "nodemon -r dotenv/config src/app.js dotenv_config_path=.env.dev",
     "start:production": "node -r dotenv/config src/app.js dotenv_config_path=.env.production",
+    "setup:admin": "node scripts/createSuperAdmin.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -19,13 +20,16 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.18.2",
-    "mongoose": "^7.6.3",
-    "dotenv": "^16.3.1",
-    "cors": "^2.8.5",
     "axios": "^1.5.1",
-    "uuid": "^9.0.1",
-    "morgan": "^1.10.0"
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^7.6.3",
+    "morgan": "^1.10.0",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

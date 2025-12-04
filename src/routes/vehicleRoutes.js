@@ -6,6 +6,10 @@
 const express = require('express');
 const router = express.Router();
 const vehicleController = require('../controllers/vehicleController');
+const { optionalAuthMiddleware } = require('../middlewares/auth');
+
+// Vehicle routes use optional auth (work for both authenticated and guest users)
+router.use(optionalAuthMiddleware);
 
 // GET /api/vehicles/status - Get data loading status
 router.get('/status', vehicleController.getStatus);
