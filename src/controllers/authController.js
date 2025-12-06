@@ -10,7 +10,9 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('../schema/User');
+const UserProduct = require('../schema/UserProduct');
 const logger = require('../utils/logger');
+const lmsDB = require('../config/lmsCollections');
 
 // Use the same secret as the lead system for cross-app tokens
 const CROSS_APP_SECRET = process.env.CROSS_APP_JWT_SECRET || process.env.JWT_SECRET || 'cross-app-secret-key-change-in-production';
@@ -71,6 +73,100 @@ function generateSessionToken(user) {
 }
 
 /**
+ * Sync lead products from LMS to consumer app
+ * Fetches lead_products from LMS by leadId and creates/updates user_products
+ * 
+ * @param {ObjectId} userId - Consumer app user ID
+ * @param {string} leadId - LMS lead ID (from token)
+ * @returns {Promise<Array>} Created/updated user products
+ */
+async function syncLeadProducts(userId, leadId) {
+  try {
+    const mongoose = require('mongoose');
+    const leadObjectId = new mongoose.Types.ObjectId(leadId);
+    
+    logger.info('Syncing lead products', { userId, leadId });
+    
+    // Fetch lead_products from LMS database
+    // Note: lmsDB.leadProducts.find() is now async and returns a cursor
+    const cursor = await lmsDB.leadProducts.find({ leadId: leadObjectId });
+    const leadProducts = await cursor.toArray();
+    
+    if (!leadProducts || leadProducts.length === 0) {
+      logger.info('No lead products found for leadId', { leadId });
+      return [];
+    }
+    
+    logger.info('Found lead products from LMS', { leadId, count: leadProducts.length });
+    
+    // Fetch product details for slugs/names
+    const productIds = leadProducts.map(lp => lp.product);
+    const productsCursor = await lmsDB.products.find({ _id: { $in: productIds } });
+    const products = await productsCursor.toArray();
+    const productMap = new Map(products.map(p => [p._id.toString(), p]));
+    
+    const syncedProducts = [];
+    
+    for (const lp of leadProducts) {
+      const product = productMap.get(lp.product?.toString());
+      
+      // Check if user_product already exists
+      const existingProduct = await UserProduct.findOne({
+        leadId: leadObjectId,
+        leadProductId: lp._id,
+      });
+      
+      if (existingProduct) {
+        // Update if exists
+        existingProduct.userId = userId;
+        existingProduct.lmsMetadata = {
+          content: lp.content,
+          isVisited: lp.isVisited,
+          lmsStatus: lp.status,
+        };
+        await existingProduct.save();
+        syncedProducts.push(existingProduct);
+      } else {
+        // Create new user_product
+        const userProduct = new UserProduct({
+          userId,
+          leadId: leadObjectId,
+          leadProductId: lp._id,
+          productId: lp.product,
+          productSlug: product?.slug || null,
+          productName: product?.title || product?.name || null,
+          status: 'active',
+          quoteStatus: 'not_requested',
+          lmsMetadata: {
+            content: lp.content,
+            isVisited: lp.isVisited,
+            lmsStatus: lp.status,
+          },
+        });
+        await userProduct.save();
+        syncedProducts.push(userProduct);
+      }
+    }
+    
+    logger.info('Synced lead products to user_products', { 
+      userId, 
+      leadId, 
+      syncedCount: syncedProducts.length 
+    });
+    
+    return syncedProducts;
+  } catch (error) {
+    logger.error('Error syncing lead products', { 
+      userId, 
+      leadId, 
+      error: error.message 
+    });
+    // Don't throw - we don't want to fail login if product sync fails
+    return [];
+  }
+}
+
+/**
  * Lead Login Handler
  * 
  * Validates the login token from lead management system,
@@ -122,13 +218,20 @@ async function leadLogin(req, res) {
     // Record the login
     await user.recordLogin('lead-token');
 
+    // Sync lead products from LMS to user_products (async, don't block login)
+    let userProducts = [];
+    if (tokenData.leadId) {
+      userProducts = await syncLeadProducts(user._id, tokenData.leadId);
+    }
+
     // Generate session token
     const sessionToken = generateSessionToken(user);
 
     logger.info('Lead login successful', {
       userId: user._id,
       isNewUser: isNew,
-      leadId: tokenData.leadId
+      leadId: tokenData.leadId,
+      productsCount: userProducts.length
     });
 
     // Set session cookie
@@ -138,6 +241,16 @@ async function leadLogin(req, res) {
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
+
+    // Prepare products list for response
+    const products = userProducts.map(up => ({
+      id: up._id,
+      productId: up.productId,
+      productSlug: up.productSlug,
+      productName: up.productName,
+      leadId: up.leadId,
+      quoteStatus: up.quoteStatus,
+    }));
 
     return res.status(200).json({
       success: true,
@@ -152,6 +265,8 @@ async function leadLogin(req, res) {
       },
       sessionToken,
       isNewUser: isNew,
+      userAlreadyExists: !isNew, // Flag for frontend to show appropriate message
+      products, // Include synced products
       redirectTo: '/dashboard' // Default redirect after login
     });
 

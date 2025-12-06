@@ -159,52 +159,78 @@ userSchema.statics.findOrCreateFromLead = async function(leadData) {
   let user = await this.findOne({
     $or: [
       { phone: phone },
-      { email: email }
+      { email: email?.toLowerCase() }
     ]
   });
   
   if (user) {
-    // Update existing user with lead info if not already set
-    if (!user.leadSystemInfo?.isLeadUser) {
+    // Update existing user with lead info if needed
+    let needsUpdate = false;
+    
+    // Add new leadId to existing user if different
+    if (leadId && user.leadSystemInfo?.leadId !== leadId) {
       user.leadSystemInfo = {
+        ...user.leadSystemInfo,
         isLeadUser: true,
         leadId,
-        product,
+        product: product || user.leadSystemInfo?.product,
         leadSubmittedAt: new Date(),
       };
-      
-      // Update auth method to allow lead-token
-      if (user.authMethod === 'password') {
-        user.authMethod = 'both';
-      }
-      
+      needsUpdate = true;
+    }
+    
+    // Update auth method to allow lead-token
+    if (user.authMethod === 'password') {
+      user.authMethod = 'both';
+      needsUpdate = true;
+    }
+    
+    if (needsUpdate) {
       await user.save();
     }
     
-    return { user, isNew: false };
+    return { user, isNew: false, alreadyExists: true };
   }
   
   // Create new user from lead data
   const [firstName, ...lastNameParts] = (fullName || '').split(' ');
   const lastName = lastNameParts.join(' ');
   
-  user = await this.create({
-    email,
-    phone,
-    fullName,
-    firstName: firstName || '',
-    lastName: lastName || '',
-    phoneVerified: true, // Phone was verified in lead submission
-    authMethod: 'lead-token',
-    leadSystemInfo: {
-      isLeadUser: true,
-      leadId,
-      product,
-      leadSubmittedAt: new Date(),
-    },
-  });
-  
-  return { user, isNew: true };
+  try {
+    user = await this.create({
+      email: email?.toLowerCase(),
+      phone,
+      fullName,
+      firstName: firstName || '',
+      lastName: lastName || '',
+      phoneVerified: true, // Phone was verified in lead submission
+      authMethod: 'lead-token',
+      leadSystemInfo: {
+        isLeadUser: true,
+        leadId,
+        product,
+        leadSubmittedAt: new Date(),
+      },
+    });
+    
+    return { user, isNew: true, alreadyExists: false };
+  } catch (error) {
+    // Handle duplicate key error (race condition)
+    if (error.code === 11000) {
+      // Another request created the user, find and return it
+      user = await this.findOne({
+        $or: [
+          { phone: phone },
+          { email: email?.toLowerCase() }
+        ]
+      });
+      
+      if (user) {
+        return { user, isNew: false, alreadyExists: true };
+      }
+    }
+    throw error;
+  }
 };
 
 // Instance method to update last login

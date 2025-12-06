@@ -68,9 +68,7 @@ app.use(errorHandler);
 // Start server
 const PORT = config.port;
 app.listen(PORT, () => {
-  logger.info(`Server is running on port ${PORT}`);
-  logger.info(`Environment: ${config.env}`);
-  logger.info(`API available at: http://localhost:${PORT}`);
+  console.log(`✅ Application started successfully on port ${PORT}`);
 });
 
 // Handle unhandled promise rejections
