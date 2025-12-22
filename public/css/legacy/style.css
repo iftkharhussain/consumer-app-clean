@@ -1,0 +1,236 @@
+:root {
+  /* Blue Shades */
+  --Blue-50: #EFF8FF;
+  --Blue-500: #2E90FA;
+  --Blue-700: #175CD3;
+  /* Gray Shades */
+  --Gray-50: #F8FAFC;
+  --Gray-100: #EEF2F6;
+  --Gray-200: #E3E8EF;
+  --Gray-300: #CDD5DF;
+  --Gray-400: #9AA3B2;
+  --Gray-500: #697586;
+  --Gray-600: #4B5565;
+  --Gray-700: #364152;
+  --Gray-800: #202939;
+  --Gray-900: #121926;
+  /* Success Shades */
+  --Success-50: #ECFDF3;
+  --Success-500: #12B76A;
+  --Success-700: #027A48;
+  /* Error Shades */
+  --Error-50: #FEF3F2;
+  --Error-500: #F04438;
+  --Error-700: #B42318;
+  /* Primary Shades */
+  --Primary: #1A1ABA;
+  --Primary-Text: #2121DD;
+  --Primary-50: #F3F5F4;
+}
+*,
+::before,
+::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+body {
+  font-family: "Inter", serif !important;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+}
+body,
+html,
+#root,
+.auth.page_wrap {
+  height: 100%;
+  margin: 0;
+}
+.ant-layout {
+  background: #fcfcfd;
+}
+/* Login Page Styles */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+.login-page .login-form-container {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+}
+.login-page .login-title {
+  text-align: center;
+  margin-bottom: 2rem;
+  color: var(--Gray-800);
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+.login-page .forgot-link {
+  color: var(--Primary);
+  text-decoration: none;
+}
+.login-page .forgot-link:hover {
+  text-decoration: underline;
+}
+/* Layout Styles */
+.app-layout {
+  min-height: 100vh;
+}
+.app-sidebar {
+  background: white;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+}
+.app-sidebar .logo-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--Gray-200);
+}
+.app-sidebar .logo-header .version {
+  font-size: 0.75rem;
+  color: var(--Gray-500);
+}
+.app-sidebar .menu-icon {
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+.app-sidebar .menu-icon:hover {
+  background: var(--Gray-100);
+}
+.app-sidebar.collapse .logo-header img {
+  max-width: 40px;
+}
+.app-menu {
+  border-right: none;
+}
+.app-menu .ant-menu-item {
+  margin: 0.25rem 0.5rem;
+  border-radius: 8px;
+}
+.app-menu .ant-menu-item:hover {
+  background: var(--Gray-50);
+}
+.app-menu .ant-menu-item.ant-menu-item-selected {
+  background: var(--Primary-50);
+  color: var(--Primary);
+}
+.app-menu .ant-menu-item.ant-menu-item-selected::after {
+  border-right: 3px solid var(--Primary);
+}
+/* Settings Page Styles */
+.settings-page .page-header {
+  background: white;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--Gray-200);
+}
+.settings-page .page-header .page-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--Gray-800);
+  margin: 0;
+}
+.settings-page .page-header .page-subtitle {
+  color: var(--Gray-500);
+  margin: 0.5rem 0 0 0;
+}
+.settings-page .page-content {
+  padding: 2rem;
+  background: white;
+  margin: 1rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+.settings-page .form-section {
+  margin-bottom: 2rem;
+}
+.settings-page .form-section .section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--Gray-800);
+  margin-bottom: 1rem;
+}
+.settings-page .form-section .ant-form-item {
+  margin-bottom: 1.5rem;
+}
+.settings-page .form-section .ant-form-item .ant-form-item-label > label {
+  color: var(--Gray-700);
+  font-weight: 500;
+}
+.settings-page .form-section .ant-form-item .ant-input {
+  border-radius: 8px;
+  border-color: var(--Gray-300);
+}
+.settings-page .form-section .ant-form-item .ant-input:focus,
+.settings-page .form-section .ant-form-item .ant-input:hover {
+  border-color: var(--Primary);
+}
+.settings-page .form-actions {
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--Gray-200);
+}
+.settings-page .form-actions .ant-btn {
+  border-radius: 8px;
+  font-weight: 500;
+}
+.settings-page .form-actions .ant-btn.ant-btn-primary {
+  background: var(--Primary);
+  border-color: var(--Primary);
+}
+.settings-page .form-actions .ant-btn.ant-btn-primary:hover {
+  background: var(--Primary-Text);
+  border-color: var(--Primary-Text);
+}
+/* Profile Picture Styles */
+.profile-picture-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+.profile-picture-section .profile-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--Gray-200);
+}
+.profile-picture-section .profile-info {
+  flex: 1;
+}
+.profile-picture-section .profile-info .profile-name {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--Gray-800);
+  margin: 0;
+}
+.profile-picture-section .profile-info .profile-email {
+  color: var(--Gray-500);
+  margin: 0.25rem 0 0 0;
+}
+/* Responsive Styles */
+body.collapsed .app-sidebar {
+  width: 80px !important;
+  min-width: 80px !important;
+}
+@media (max-width: 768px) {
+  body.collapsed .app-sidebar {
+    width: 0 !important;
+    min-width: 0 !important;
+    overflow: hidden;
+  }
+  .settings-page .page-content {
+    margin: 0.5rem;
+    padding: 1rem;
+  }
+  .login-page .login-form-container {
+    margin: 1rem;
+    padding: 1.5rem;
+  }
+}

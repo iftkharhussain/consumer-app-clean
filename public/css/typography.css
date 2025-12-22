@@ -1,0 +1,280 @@
+/* Typography System - Based on UntitledUI */
+
+.prose {
+    color: var(--color-text-primary);
+    max-width: 65ch;
+    font-family: var(--font-body);
+    font-size: var(--text-md);
+    line-height: var(--text-md--line-height);
+}
+
+.prose > :first-child {
+    margin-top: 0;
+}
+
+.prose > :last-child {
+    margin-bottom: 0;
+}
+
+.prose p {
+    margin-top: var(--spacing) * 5;
+    margin-bottom: var(--spacing) * 5;
+}
+
+.prose img {
+    margin-top: calc(var(--spacing) * 8);
+    margin-bottom: calc(var(--spacing) * 8);
+}
+
+.prose video {
+    margin-top: calc(var(--spacing) * 8);
+    margin-bottom: calc(var(--spacing) * 8);
+}
+
+.prose figure {
+    margin-top: calc(var(--spacing) * 8);
+    margin-bottom: calc(var(--spacing) * 8);
+}
+
+.prose figure > * {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.prose figcaption {
+    color: var(--color-text-tertiary);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    margin-top: calc(var(--spacing) * 3);
+}
+
+.prose code {
+    color: var(--color-text-primary);
+    font-weight: 600;
+    font-size: var(--text-sm);
+    background-color: var(--color-bg-secondary);
+    padding: 0.125rem 0.25rem;
+    border-radius: var(--radius-sm);
+}
+
+.prose code::before,
+.prose code::after {
+    content: "`";
+}
+
+.prose a {
+    color: var(--color-fg-brand-primary);
+    text-decoration: underline;
+    font-weight: 500;
+}
+
+.prose a:hover {
+    color: var(--color-fg-brand-secondary_hover);
+}
+
+.prose strong {
+    color: var(--color-text-primary);
+    font-weight: 600;
+}
+
+.prose ol,
+.prose ul {
+    margin-top: calc(var(--spacing) * 5);
+    margin-bottom: calc(var(--spacing) * 5);
+    padding-left: calc(var(--spacing) * 6.5);
+}
+
+.prose li {
+    margin-top: calc(var(--spacing) * 2);
+    margin-bottom: calc(var(--spacing) * 2);
+}
+
+.prose > ul > li p {
+    margin-top: calc(var(--spacing) * 3);
+    margin-bottom: calc(var(--spacing) * 3);
+}
+
+.prose ol > li {
+    padding-left: calc(var(--spacing) * 2);
+}
+
+.prose ol > li::marker {
+    font-weight: 400;
+    color: var(--color-text-tertiary);
+}
+
+.prose ul > li {
+    padding-left: calc(var(--spacing) * 2);
+}
+
+.prose ul > li::marker {
+    color: var(--color-text-quaternary);
+}
+
+.prose h1 {
+    color: var(--color-text-primary);
+    font-weight: 700;
+    font-size: var(--text-display-md);
+    line-height: var(--text-display-md--line-height);
+    letter-spacing: var(--text-display-md--letter-spacing);
+    margin-top: 0;
+    margin-bottom: calc(var(--spacing) * 8);
+}
+
+.prose h2 {
+    color: var(--color-text-primary);
+    font-weight: 700;
+    font-size: var(--text-display-sm);
+    line-height: var(--text-display-sm--line-height);
+    margin-top: calc(var(--spacing) * 12);
+    margin-bottom: calc(var(--spacing) * 6);
+}
+
+.prose h3 {
+    color: var(--color-text-primary);
+    font-weight: 600;
+    font-size: var(--text-xl);
+    line-height: var(--text-xl--line-height);
+    margin-top: calc(var(--spacing) * 8);
+    margin-bottom: calc(var(--spacing) * 4);
+}
+
+.prose h4 {
+    color: var(--color-text-primary);
+    font-weight: 600;
+    font-size: var(--text-lg);
+    line-height: var(--text-lg--line-height);
+    margin-top: calc(var(--spacing) * 6);
+    margin-bottom: calc(var(--spacing) * 2);
+}
+
+.prose blockquote {
+    font-weight: 500;
+    font-style: italic;
+    color: var(--color-text-primary);
+    border-left-width: 0.25rem;
+    border-left-color: var(--color-border-primary);
+    quotes: "\201C""\201D""\2018""\2019";
+    margin-top: calc(var(--spacing) * 8);
+    margin-bottom: calc(var(--spacing) * 8);
+    padding-left: calc(var(--spacing) * 6);
+}
+
+.prose blockquote p:first-of-type::before {
+    content: open-quote;
+}
+
+.prose blockquote p:last-of-type::after {
+    content: close-quote;
+}
+
+.prose h1 + * {
+    margin-top: 0;
+}
+
+.prose h2 + * {
+    margin-top: 0;
+}
+
+.prose h3 + * {
+    margin-top: 0;
+}
+
+.prose h4 + * {
+    margin-top: 0;
+}
+
+.prose table {
+    width: 100%;
+    table-layout: auto;
+    text-align: left;
+    margin-top: calc(var(--spacing) * 8);
+    margin-bottom: calc(var(--spacing) * 8);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+}
+
+.prose thead {
+    border-bottom-width: 1px;
+    border-bottom-color: var(--color-border-primary);
+}
+
+.prose thead th {
+    color: var(--color-text-primary);
+    font-weight: 600;
+    vertical-align: bottom;
+    padding-right: calc(var(--spacing) * 2);
+    padding-bottom: calc(var(--spacing) * 2);
+    padding-left: calc(var(--spacing) * 2);
+}
+
+.prose tbody tr {
+    border-bottom-width: 1px;
+    border-bottom-color: var(--color-border-secondary);
+}
+
+.prose tbody tr:last-child {
+    border-bottom-width: 0;
+}
+
+.prose tbody td {
+    vertical-align: baseline;
+}
+
+.prose tbody td,
+.prose tfoot td {
+    padding-top: calc(var(--spacing) * 2);
+    padding-right: calc(var(--spacing) * 2);
+    padding-bottom: calc(var(--spacing) * 2);
+    padding-left: calc(var(--spacing) * 2);
+}
+
+/* Text size utilities */
+.text-xs { 
+    font-size: var(--text-xs); 
+    line-height: var(--text-xs--line-height); 
+}
+.text-sm { 
+    font-size: var(--text-sm); 
+    line-height: var(--text-sm--line-height); 
+}
+.text-base, .text-md { 
+    font-size: var(--text-md); 
+    line-height: var(--text-md--line-height); 
+}
+.text-lg { 
+    font-size: var(--text-lg); 
+    line-height: var(--text-lg--line-height); 
+}
+.text-xl { 
+    font-size: var(--text-xl); 
+    line-height: var(--text-xl--line-height); 
+}
+.text-display-xs { 
+    font-size: var(--text-display-xs); 
+    line-height: var(--text-display-xs--line-height); 
+}
+.text-display-sm { 
+    font-size: var(--text-display-sm); 
+    line-height: var(--text-display-sm--line-height); 
+}
+.text-display-md { 
+    font-size: var(--text-display-md); 
+    line-height: var(--text-display-md--line-height); 
+    letter-spacing: var(--text-display-md--letter-spacing);
+}
+.text-display-lg { 
+    font-size: var(--text-display-lg); 
+    line-height: var(--text-display-lg--line-height); 
+    letter-spacing: var(--text-display-lg--letter-spacing);
+}
+.text-display-xl { 
+    font-size: var(--text-display-xl); 
+    line-height: var(--text-display-xl--line-height); 
+    letter-spacing: var(--text-display-xl--letter-spacing);
+}
+.text-display-2xl { 
+    font-size: var(--text-display-2xl); 
+    line-height: var(--text-display-2xl--line-height); 
+    letter-spacing: var(--text-display-2xl--letter-spacing);
+}

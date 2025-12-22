@@ -1,0 +1,28 @@
+/* Minimal styles - only critical styles not yet moved to components */
+
+/* Loading states that need to be available immediately */
+.loading-full-bg {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+.loading-full-bg > span {
+  display: flex;
+  align-items: center;
+}
+
+/* Critical layout styles - these may be needed before React loads */
+body,
+html,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+/* App theme-specific loading indicators */
+.ipl-progress-indicator-head.custom .first-indicator,
+.ipl-progress-indicator-head.custom .second-indicator {
+  background-color: var(--Primary, #1A1ABA);
+}

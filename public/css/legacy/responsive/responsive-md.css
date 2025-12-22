@@ -1,0 +1,39 @@
+@media (max-width: 992px) {
+  .security-section .app-config-wrapper {
+    flex-direction: column;
+  }
+  .security-section .app-config-right-section {
+    width: 100%;
+  }
+  .security-section .app-config-sidebar {
+    width: 100%;
+    margin-right: 0px;
+    display: flex;
+    margin-bottom: 10px;
+    gap: 5px;
+  }
+  .security-section .app-config-sidebar a {
+    width: auto;
+  }
+  .main-analytics-top-section .btn-group label .month-res {
+    display: inline !important;
+  }
+  .main-analytics-top-section .btn-group label .month {
+    display: none;
+  }
+  .main-analytics-top-section .filter-btn {
+    height: 40px;
+    width: 40px;
+    padding: 3px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .main-analytics-top-section .filter-btn .filter-btn-text,
+  .main-analytics-top-section .filter-btn span {
+    display: none;
+  }
+  .leads-page-banner .lead-banner-actions {
+    flex-wrap: wrap;
+  }
+}

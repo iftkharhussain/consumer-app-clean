@@ -1,0 +1,68 @@
+/* Responsive utilities - consolidated from responsive CSS files */
+
+/* Mobile-first responsive utilities */
+@media (max-width: 576px) {
+  .xs-hidden { display: none !important; }
+  .xs-block { display: block !important; }
+  .xs-flex { display: flex !important; }
+  .xs-flex-column { flex-direction: column !important; }
+}
+
+@media (max-width: 768px) {
+  .sm-hidden { display: none !important; }
+  .sm-block { display: block !important; }
+  .sm-flex { display: flex !important; }
+  .sm-flex-column { flex-direction: column !important; }
+  
+  /* Common mobile layout adjustments */
+  .sm-full-width { width: 100% !important; }
+  .sm-padding-x-16 { padding-left: 16px !important; padding-right: 16px !important; }
+  .sm-margin-bottom-16 { margin-bottom: 16px !important; }
+}
+
+@media (max-width: 992px) {
+  .md-hidden { display: none !important; }
+  .md-block { display: block !important; }
+  .md-flex { display: flex !important; }
+  .md-flex-column { flex-direction: column !important; }
+}
+
+@media (max-width: 1200px) {
+  .lg-hidden { display: none !important; }
+  .lg-block { display: block !important; }
+  .lg-flex { display: flex !important; }
+}
+
+@media (max-width: 1400px) {
+  .xl-hidden { display: none !important; }
+  .xl-block { display: block !important; }
+}
+
+/* Layout specific responsive styles */
+@media (max-width: 768px) {
+  /* Sidebar collapse on mobile */
+  body.collapsed .app-sidebar {
+    width: 0 !important;
+    min-width: 0 !important;
+    overflow: hidden;
+  }
+  
+  /* Form adjustments */
+  .ant-form-item {
+    margin-bottom: 12px !important;
+  }
+  
+  .ant-form-item .ant-form-item-label > label {
+    height: auto;
+  }
+  
+  /* Button adjustments */
+  .ant-modal-footer .ant-btn {
+    width: 50%;
+  }
+  
+  /* Pagination adjustments */
+  .ant-pagination.ant-table-pagination > li {
+    width: 40px !important;
+  }
+}

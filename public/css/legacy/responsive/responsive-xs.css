@@ -1,0 +1,48 @@
+@media (max-width: 576px) {
+  .notfound .notfound-404 {
+    position: relative;
+    height: 168px;
+  }
+  .notfound .notfound-404 h1 {
+    font-size: 142px;
+  }
+  .notfound h2 {
+    font-size: 22px;
+  }
+  .Settings-Profile .profile-sm-label {
+    display: block;
+    margin-bottom: 6px;
+  }
+  .Settings-Profile .profile-md-label {
+    display: none;
+  }
+  .Settings-Profile .settings-profile-input {
+    flex-direction: column;
+    gap: 20px;
+  }
+  .Settings-Profile .ant-form-item {
+    margin-bottom: 20px !important;
+  }
+  .Settings-Profile .update-pass-sm,
+  .Settings-Profile .change-phone-sm {
+    width: 100%;
+  }
+  .notification-page .noti-btn-sm {
+    width: 100%;
+  }
+  .analytics-chart-record {
+    flex-direction: column;
+  }
+  .analytics-chart-record-wrap {
+    gap: 48px !important;
+    flex-direction: row;
+  }
+  .chart-record,
+  .dashboard,
+  .analytics-chart-record-wrap {
+    width: 100%;
+  }
+  .utillities-tab-data form .ant-form-item-label {
+    padding: 0 0 6px !important;
+  }
+}
