@@ -207,21 +207,49 @@ async function leadLogin(req, res) {
     const tokenData = verification.data;
 
     // Find or create user from lead data
-    const { user, isNew } = await User.findOrCreateFromLead({
+    const { user, isNew, credentialsMismatch, requiresManualLogin } = await User.findOrCreateFromLead({
       phone: tokenData.phone,
       email: tokenData.email,
       fullName: tokenData.fullName,
       leadId: tokenData.leadId,
-      product: tokenData.product
+      product: tokenData.product,
+      leadType: tokenData.leadType
     });
+
+    // If credentials don't match for duplicate lead, return error with mismatch info
+    if (requiresManualLogin && credentialsMismatch) {
+      logger.warn('Lead login failed - credentials mismatch', {
+        phone: tokenData.phone,
+        email: tokenData.email,
+        phoneMismatch: credentialsMismatch.phoneMismatch,
+        emailMismatch: credentialsMismatch.emailMismatch
+      });
+      
+      return res.status(403).json({
+        success: false,
+        requiresManualLogin: true,
+        credentialsMismatch,
+        message: 'Credentials mismatch. Please login manually.',
+        submittedCredentials: {
+          phone: tokenData.phone,
+          email: tokenData.email
+        }
+      });
+    }
 
     // Record the login
     await user.recordLogin('lead-token');
 
-    // Sync lead products from LMS to user_products (async, don't block login)
+    // Sync lead products from LMS to user_products for both new and duplicate leads
+    // This ensures products are always available even if previously deleted
     let userProducts = [];
+    console.log('Lead ID for product sync:', tokenData.leadId);
+    console.log('user.leadSystemInfo?.leadId:', user.leadSystemInfo?.leadId);
     if (tokenData.leadId) {
       userProducts = await syncLeadProducts(user._id, tokenData.leadId);
+    } else if (user.leadSystemInfo?.leadId) {
+      // For duplicate leads, use existing leadId from user profile
+      userProducts = await syncLeadProducts(user._id, user.leadSystemInfo.leadId);
     }
 
     // Generate session token
@@ -260,6 +288,7 @@ async function leadLogin(req, res) {
         email: user.email,
         phone: user.phone,
         fullName: user.fullName || user.displayName,
+        language: user.language || 'fr',
         isLeadUser: user.leadSystemInfo?.isLeadUser,
         product: user.leadSystemInfo?.product
       },
@@ -747,5 +776,6 @@ module.exports = {
   verifyAuth,
   logout,
   verifyLeadToken,
-  generateSessionToken
+  generateSessionToken,
+  syncLeadProducts
 };

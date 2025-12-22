@@ -24,10 +24,11 @@ const SUPER_ADMIN = {
 };
 
 async function createSuperAdmin() {
+  let connection = null;
   try {
     // Connect to MongoDB
     console.log('🔌 Connecting to MongoDB...');
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/consumer-app');
+    connection = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/consumer_app');
     console.log('✅ Connected to MongoDB');
 
     // Check if admin already exists
@@ -43,6 +44,7 @@ async function createSuperAdmin() {
       console.log(`   Email: ${existingAdmin.email}`);
       console.log(`   Phone: ${existingAdmin.phone}`);
       console.log(`   Created: ${existingAdmin.createdAt}`);
+      await mongoose.disconnect();
       process.exit(0);
     }
 
@@ -64,11 +66,12 @@ async function createSuperAdmin() {
       emailVerified: true,
       phoneVerified: true,
       status: 'active',
-      role: 'super_admin', // Add this field if you plan to use roles
-      isAdmin: true // Add this field for admin identification
+      role: 'super_admin',
+      isAdmin: true
     });
 
     console.log('✅ Super admin user created successfully!');
+    console.log('✅ User ID:', adminUser._id.toString());
     console.log('');
     console.log('📋 Login Credentials:');
     console.log('========================');
@@ -81,25 +84,20 @@ async function createSuperAdmin() {
     console.log('');
     console.log('🌐 You can now login at: http://localhost:3025/login');
 
+    // Wait a bit to ensure write is committed
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
   } catch (error) {
     console.error('❌ Error creating super admin:', error.message);
     console.error(error.stack);
+    await mongoose.disconnect();
     process.exit(1);
   } finally {
     // Close MongoDB connection
-    await mongoose.disconnect();
-    console.log('🔌 Disconnected from MongoDB');
-  }
-}
-
-// Add role and admin fields to User schema if they don't exist
-async function updateSchema() {
-  try {
-    // This will add indexes if they don't exist
-    await User.collection.createIndex({ role: 1 });
-    await User.collection.createIndex({ isAdmin: 1 });
-  } catch (error) {
-    // Ignore index creation errors (they might already exist)
+    if (mongoose.connection.readyState === 1) {
+      await mongoose.disconnect();
+      console.log('🔌 Disconnected from MongoDB');
+    }
   }
 }
 
@@ -108,9 +106,7 @@ if (require.main === module) {
   console.log('🚀 Consumer App - Super Admin Setup');
   console.log('====================================');
   
-  updateSchema().then(() => {
-    createSuperAdmin();
-  });
+  createSuperAdmin();
 }
 
 module.exports = { createSuperAdmin };

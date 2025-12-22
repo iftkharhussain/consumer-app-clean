@@ -153,7 +153,7 @@ userSchema.virtual('displayName').get(function() {
 
 // Static method to find or create user from lead data
 userSchema.statics.findOrCreateFromLead = async function(leadData) {
-  const { phone, email, fullName, leadId, product } = leadData;
+  const { phone, email, fullName, leadId, product, leadType } = leadData;
   
   // Try to find existing user by phone or email
   let user = await this.findOne({
@@ -164,6 +164,34 @@ userSchema.statics.findOrCreateFromLead = async function(leadData) {
   });
   
   if (user) {
+    // For duplicate leads, check if credentials match
+    const credentialsMismatch = {
+      phoneMismatch: false,
+      emailMismatch: false
+    };
+    
+    if (leadType === 'duplicate') {
+      // Check if phone matches
+      if (user.phone !== phone) {
+        credentialsMismatch.phoneMismatch = true;
+      }
+      // Check if email matches
+      if (email && user.email !== email.toLowerCase()) {
+        credentialsMismatch.emailMismatch = true;
+      }
+      
+      // If there's a mismatch, return without updating
+      if (credentialsMismatch.phoneMismatch || credentialsMismatch.emailMismatch) {
+        return { 
+          user, 
+          isNew: false, 
+          alreadyExists: true,
+          credentialsMismatch,
+          requiresManualLogin: true
+        };
+      }
+    }
+    
     // Update existing user with lead info if needed
     let needsUpdate = false;
     
@@ -189,7 +217,7 @@ userSchema.statics.findOrCreateFromLead = async function(leadData) {
       await user.save();
     }
     
-    return { user, isNew: false, alreadyExists: true };
+    return { user, isNew: false, alreadyExists: true, credentialsMismatch };
   }
   
   // Create new user from lead data

@@ -370,13 +370,35 @@ const fetchQuote = async (req, res) => {
     }
     
     // Find the user's product
-    const userProduct = await UserProduct.findByUserAndSlug(userId, productSlug);
+    let userProduct = await UserProduct.findByUserAndSlug(userId, productSlug);
     
     if (!userProduct) {
-      return res.status(404).json({
-        success: false,
-        message: 'Product not found for this user'
+      // Product not found - try to sync from LMS
+      logger.info('Product not found, attempting to sync from LMS', {
+        userId,
+        productSlug,
+        requestId
       });
+      
+      // Get user to find leadId
+      const User = require('../schema/User');
+      const user = await User.findById(userId);
+      
+      if (user?.leadSystemInfo?.leadId) {
+        // Try syncing products from LMS
+        const { syncLeadProducts } = require('./authController');
+        await syncLeadProducts(userId, user.leadSystemInfo.leadId);
+        
+        // Try finding the product again
+        userProduct = await UserProduct.findByUserAndSlug(userId, productSlug);
+      }
+      
+      if (!userProduct) {
+        return res.status(404).json({
+          success: false,
+          message: 'Product not found for this user'
+        });
+      }
     }
     
     logger.info('Found user product', {
