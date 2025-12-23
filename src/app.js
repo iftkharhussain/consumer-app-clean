@@ -29,6 +29,8 @@ app.use(cors({
     const allowed = [
       process.env.FRONTEND_URL,
       'https://consumer.norga.app',
+      'https://www.norga.io',
+      'https://norga.io',
       'http://localhost:3000',
       'http://localhost:3001',
       'http://localhost:3002'
