@@ -28,7 +28,11 @@ async function createSuperAdmin() {
   try {
     // Connect to MongoDB
     console.log('🔌 Connecting to MongoDB...');
-    connection = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/consumer_app');
+    console.log('   URI:', process.env.MONGODB_URI);
+    connection = await mongoose.connect(process.env.MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
     console.log('✅ Connected to MongoDB');
 
     // Check if admin already exists
