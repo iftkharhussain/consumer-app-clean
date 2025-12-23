@@ -26,6 +26,30 @@ const connectDB = async () => {
     const conn = await mongoose.connect(config.mongodb.uri, config.mongodb.options);
     console.log(`✅ [DATABASE] Connected to Consumer DB (${extractDbName(config.mongodb.uri)})`);
     
+    // Debug: Check database and collections after connection
+    setTimeout(async () => {
+      try {
+        const collections = await mongoose.connection.db.listCollections().toArray();
+        console.log(`🗄️  [DATABASE] Available collections in ${extractDbName(config.mongodb.uri)}:`, collections.map(c => c.name));
+        
+        // Check if users collection exists and count
+        if (collections.some(c => c.name === 'users')) {
+          const User = mongoose.connection.db.collection('users');
+          const userCount = await User.countDocuments();
+          console.log(`👤 [DATABASE] Users collection: ${userCount} documents`);
+          
+          if (userCount > 0) {
+            const adminUser = await User.findOne({ email: 'admin@norga.io' }, { projection: { email: 1, role: 1, isAdmin: 1 } });
+            console.log(`🔐 [DATABASE] Admin user found:`, !!adminUser, adminUser ? { email: adminUser.email, role: adminUser.role, isAdmin: adminUser.isAdmin } : null);
+          }
+        } else {
+          console.log(`⚠️  [DATABASE] Users collection not found!`);
+        }
+      } catch (debugError) {
+        console.error(`❌ [DATABASE] Debug error:`, debugError.message);
+      }
+    }, 2000); // Wait 2 seconds for full connection
+    
     // Connect to LMS Database (shared)
     lmsConnection = mongoose.createConnection(config.lmsDb.uri, config.lmsDb.options);
     
