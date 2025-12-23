@@ -59,7 +59,8 @@ app.use(cookieParser());
 // Serve static files from the public directory (React build)
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-app.use(express.static(path.join(__dirname, '..', 'question-form')));
+// Serve question form static assets directly from forms directory
+app.use('/question-form', express.static(path.join(__dirname, '..', 'forms')));
 
 // Request logging (only errors and slow requests)
 app.use(requestLogger);
