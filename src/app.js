@@ -57,6 +57,8 @@ app.use(cookieParser());
 // Serve static files from the public directory (React build)
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+app.use(express.static(path.join(__dirname, '..', 'question-form')));
+
 // Request logging (only errors and slow requests)
 app.use(requestLogger);
 
