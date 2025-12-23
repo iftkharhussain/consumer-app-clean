@@ -8,6 +8,18 @@
     "start:dev": "nodemon -r dotenv/config src/app.js dotenv_config_path=.env.dev",
     "start:production": "node -r dotenv/config src/app.js dotenv_config_path=.env.production",
     "setup:admin": "node scripts/createSuperAdmin.js",
+    "pm2:dev": "pm2 start ecosystem.config.js --only consumer-app-api-dev",
+    "pm2:prod": "pm2 start ecosystem.config.js --only consumer-app-api-prod --env production",
+    "pm2:restart:dev": "pm2 restart consumer-app-api-dev",
+    "pm2:restart:prod": "pm2 restart consumer-app-api-prod",
+    "pm2:stop:dev": "pm2 stop consumer-app-api-dev",
+    "pm2:stop:prod": "pm2 stop consumer-app-api-prod",
+    "pm2:delete:dev": "pm2 delete consumer-app-api-dev",
+    "pm2:delete:prod": "pm2 delete consumer-app-api-prod",
+    "pm2:logs:dev": "pm2 logs consumer-app-api-dev",
+    "pm2:logs:prod": "pm2 logs consumer-app-api-prod",
+    "pm2:monit": "pm2 monit",
+    "pm2:status": "pm2 status",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

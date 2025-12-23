@@ -16,3 +16,8 @@ build/
 phase1.text
 Fortus documentation
 /examples
+
+# PM2 logs
+logs/
+.pm2/
+pids/
