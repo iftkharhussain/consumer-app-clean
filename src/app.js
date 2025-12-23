@@ -34,19 +34,17 @@ app.use(cors({
       'http://localhost:3002'
     ].filter(Boolean);
     
-    console.log('🔍 CORS Request - Origin:', origin, 'Allowed:', allowed);
-    
     // Allow requests with no origin (same-origin requests, mobile apps, etc.)
     if (!origin) {
-      console.log('✅ CORS: No origin, allowing request');
+      console.log('CORS: No origin, allowing request');
       return callback(null, true);
     }
     
     if (allowed.includes(origin)) {
-      console.log('✅ CORS: Origin allowed');
+      console.log('CORS: Origin allowed');
       callback(null, true);
     } else {
-      console.log('❌ CORS: Origin not allowed');
+      console.log('CORS: Origin not allowed');
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -84,7 +82,7 @@ app.use(errorHandler);
 // Start server
 const PORT = config.port;
 app.listen(PORT, () => {
-  console.log(`✅ Application started successfully on port ${PORT}`);
+  console.log(`Application started successfully on port ${PORT}`);
 });
 
 // Handle unhandled promise rejections

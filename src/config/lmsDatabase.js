@@ -34,18 +34,18 @@ if (!LMS_DB_URI) {
 
     // Connection event handlers
     lmsConnection.on('connected', () => {
-      console.log('✅ [LMS DATABASE] Connected to LMS MongoDB');
+      console.log('[LMS DATABASE] Connected to LMS MongoDB');
     });
 
     lmsConnection.on('disconnected', () => {
-      console.log('❌ [LMS DATABASE] Disconnected from LMS MongoDB');
+      console.log('[LMS DATABASE] Disconnected from LMS MongoDB');
     });
 
     lmsConnection.on('error', (error) => {
-      console.error('💥 [LMS DATABASE] Connection error:', error.message);
+      console.error('[LMS DATABASE] Connection error:', error.message);
     });
   } catch (error) {
-    console.error('💥 [LMS DATABASE] Failed to create connection:', error.message);
+    console.error('[LMS DATABASE] Failed to create connection:', error.message);
   }
 }
 

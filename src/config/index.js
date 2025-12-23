@@ -3,10 +3,6 @@ const path = require('path');
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
 require('dotenv').config({ path: path.resolve(process.cwd(), envFile) });
 
-console.log('🔧 [CONFIG] Environment file:', envFile);
-console.log('🔧 [CONFIG] MONGODB_URI loaded:', !!process.env.MONGODB_URI);
-console.log('🔧 [CONFIG] MongoDB URI:', process.env.MONGODB_URI ? process.env.MONGODB_URI.replace(/:[^:@]*@/, ':***@') : 'NOT SET');
-
 module.exports = {
   env: process.env.NODE_ENV || 'development',
   port: process.env.PORT || 3025,

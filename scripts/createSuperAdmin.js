@@ -32,13 +32,13 @@ async function createSuperAdmin() {
   let connection = null;
   try {
     // Connect to MongoDB
-    console.log('🔌 Connecting to MongoDB...');
+    console.log('Connecting to MongoDB...');
     console.log('   URI:', process.env.MONGODB_URI);
     connection = await mongoose.connect(process.env.MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log('✅ Connected to MongoDB');
+    console.log('Connected to MongoDB');
 
     // Check if admin already exists
     const existingAdmin = await User.findOne({ 
@@ -49,7 +49,7 @@ async function createSuperAdmin() {
     });
 
     if (existingAdmin) {
-      console.log('⚠️  Super admin user already exists:');
+      console.log('Super admin user already exists:');
       console.log(`   Email: ${existingAdmin.email}`);
       console.log(`   Phone: ${existingAdmin.phone}`);
       console.log(`   Created: ${existingAdmin.createdAt}`);
@@ -58,12 +58,12 @@ async function createSuperAdmin() {
     }
 
     // Hash password
-    console.log('🔐 Hashing password...');
+    console.log('Hashing password...');
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(SUPER_ADMIN.password, saltRounds);
 
     // Create super admin user
-    console.log('👤 Creating super admin user...');
+    console.log('Creating super admin user...');
     const adminUser = await User.create({
       email: SUPER_ADMIN.email,
       password: hashedPassword,
@@ -79,17 +79,17 @@ async function createSuperAdmin() {
       isAdmin: true
     });
 
-    console.log('✅ Super admin user created successfully!');
-    console.log('✅ User ID:', adminUser._id.toString());
+    console.log('Super admin user created successfully!');
+    console.log('User ID:', adminUser._id.toString());
     console.log('');
-    console.log('📋 Login Credentials:');
+    console.log('Login Credentials:');
     console.log('========================');
     console.log(`Email:    ${SUPER_ADMIN.email}`);
     console.log(`Password: ${SUPER_ADMIN.password}`);
     console.log(`Phone:    ${SUPER_ADMIN.phone}`);
     console.log('========================');
     console.log('');
-    console.log('🚨 IMPORTANT: Change the default password after first login!');
+    console.log('IMPORTANT: Change the default password after first login!');
     console.log('');
     console.log('🌐 You can now login at: http://localhost:3025/login');
 
@@ -97,7 +97,7 @@ async function createSuperAdmin() {
     await new Promise(resolve => setTimeout(resolve, 1000));
 
   } catch (error) {
-    console.error('❌ Error creating super admin:', error.message);
+    console.error('Error creating super admin:', error.message);
     console.error(error.stack);
     await mongoose.disconnect();
     process.exit(1);
@@ -105,14 +105,14 @@ async function createSuperAdmin() {
     // Close MongoDB connection
     if (mongoose.connection.readyState === 1) {
       await mongoose.disconnect();
-      console.log('🔌 Disconnected from MongoDB');
+      console.log('Disconnected from MongoDB');
     }
   }
 }
 
 // Run the script
 if (require.main === module) {
-  console.log('🚀 Consumer App - Super Admin Setup');
+  console.log('Consumer App - Super Admin Setup');
   console.log('====================================');
   
   createSuperAdmin();

@@ -243,8 +243,6 @@ async function leadLogin(req, res) {
     // Sync lead products from LMS to user_products for both new and duplicate leads
     // This ensures products are always available even if previously deleted
     let userProducts = [];
-    console.log('Lead ID for product sync:', tokenData.leadId);
-    console.log('user.leadSystemInfo?.leadId:', user.leadSystemInfo?.leadId);
     if (tokenData.leadId) {
       userProducts = await syncLeadProducts(user._id, tokenData.leadId);
     } else if (user.leadSystemInfo?.leadId) {
@@ -450,23 +448,14 @@ async function login(req, res) {
     }
 
     // Find user by email and include password for verification
-    
-    // Debug: Check database connection and collections
-    console.log('🗄️  Database Debug Info:');
-    console.log('   Database Name:', User.db.name);
-    console.log('   Collection Name:', User.collection.name);
-    console.log('   Connection State:', User.db.readyState);
-    
+   
     try {
       const collections = await User.db.db.listCollections().toArray();
-      console.log('   Available Collections:', collections.map(c => c.name));
       
       const userCount = await User.countDocuments();
-      console.log('   Total Users:', userCount);
       
       if (userCount > 0) {
         const sampleUsers = await User.find({}, 'email role isAdmin').limit(3);
-        console.log('   Sample Users:', sampleUsers.map(u => ({ email: u.email, role: u.role, isAdmin: u.isAdmin })));
       }
     } catch (dbError) {
       console.error('   Database Debug Error:', dbError.message);
@@ -474,16 +463,7 @@ async function login(req, res) {
     
     const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
 
-    console.log('🔍 Login attempt:', {
-      email: email.toLowerCase(),
-      userFound: !!user,
-      hasPassword: user ? !!user.password : false,
-      userStatus: user ? user.status : null,
-      userId: user ? user._id : null
-    });
-
     if (!user) {
-      console.log('❌ User not found for email:', email.toLowerCase());
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
@@ -500,15 +480,9 @@ async function login(req, res) {
 
     // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    console.log('🔐 Password verification:', {
-      email: user.email,
-      passwordProvided: !!password,
-      hasStoredPassword: !!user.password,
-      passwordValid: isPasswordValid
-    });
     
     if (!isPasswordValid) {
-      console.log('❌ Invalid password for user:', user.email);
+      console.log('Invalid password for user:', user.email);
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
