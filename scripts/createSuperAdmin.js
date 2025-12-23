@@ -5,10 +5,15 @@
  * This script creates the first super admin user for the consumer app.
  * Run this script once to set up the initial admin account.
  * 
- * Usage: node scripts/createSuperAdmin.js
+ * Usage: 
+ *   Local:      node scripts/createSuperAdmin.js
+ *   Production: NODE_ENV=production node scripts/createSuperAdmin.js
  */
 
-require('dotenv').config({ path: '.env.local' });
+const path = require('path');
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
+require('dotenv').config({ path: path.resolve(process.cwd(), envFile) });
+
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const User = require('../src/schema/User');
