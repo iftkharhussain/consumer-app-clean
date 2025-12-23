@@ -17,6 +17,7 @@ const connectDB = async () => {
   console.log('🔧 ENVIRONMENT CONFIGURATION');
   console.log('='.repeat(60));
   console.log(`📍 NODE_ENV: ${config.env}`);
+  console.log(`🗄️  Consumer DB URI: ${config.mongodb.uri ? config.mongodb.uri.replace(/:[^:@]*@/, ':***@') : 'NOT SET'}`);
   console.log(`🗄️  Consumer DB: ${extractDbName(config.mongodb.uri)}`);
   console.log(`🗄️  LMS DB: ${extractDbName(config.lmsDb.uri)}`);
   console.log('='.repeat(60));
