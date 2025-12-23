@@ -28,13 +28,25 @@ app.use(cors({
   origin: (origin, callback) => {
     const allowed = [
       process.env.FRONTEND_URL,
+      'https://consumer.norga.app',
       'http://localhost:3000',
       'http://localhost:3001',
       'http://localhost:3002'
     ].filter(Boolean);
-    if (!origin || allowed.includes(origin)) {
+    
+    console.log('🔍 CORS Request - Origin:', origin, 'Allowed:', allowed);
+    
+    // Allow requests with no origin (same-origin requests, mobile apps, etc.)
+    if (!origin) {
+      console.log('✅ CORS: No origin, allowing request');
+      return callback(null, true);
+    }
+    
+    if (allowed.includes(origin)) {
+      console.log('✅ CORS: Origin allowed');
       callback(null, true);
     } else {
+      console.log('❌ CORS: Origin not allowed');
       callback(new Error('Not allowed by CORS'));
     }
   },
