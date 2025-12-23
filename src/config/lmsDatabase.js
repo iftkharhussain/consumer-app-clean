@@ -10,6 +10,7 @@ const mongoose = require('mongoose');
 // LMS Database connection string from environment
 const LMS_DB_URI = process.env.LMS_DB_URI || process.env.NORGA_DB;
 
+let lmsConnection = null;
 
 try {
   // Connection options
@@ -25,7 +26,7 @@ try {
   };
 
   // Create separate connection to LMS database
-  const lmsConnection = mongoose.createConnection(LMS_DB_URI, connectionOptions);
+  lmsConnection = mongoose.createConnection(LMS_DB_URI, connectionOptions);
 
   // Connection event handlers
   lmsConnection.on('connected', () => {
