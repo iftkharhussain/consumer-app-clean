@@ -21,7 +21,7 @@ module.exports = {
       exec_mode: 'cluster',
       node_args: '-r dotenv/config',
       env: {
-        DOTENV_CONFIG_PATH: '.env.production'
+        dotenv_config_path: '.env.production'
       },
       error_file: './logs/pm2-error-prod.log',
       out_file: './logs/pm2-out-prod.log',
