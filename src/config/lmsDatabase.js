@@ -8,34 +8,40 @@
 const mongoose = require('mongoose');
 
 // LMS Database connection string from environment
-const LMS_DB_URI = process.env.LMS_DB_URI || process.env.NORGA_DB || 'mongodb://localhost:27017/norga-app';
+const LMS_DB_URI = process.env.LMS_DB_URI || process.env.NORGA_DB;
 
-// Connection options
-const connectionOptions = {
-  maxPoolSize: 5,           // Smaller pool since this is secondary connection
-  minPoolSize: 1,
-  serverSelectionTimeoutMS: 5000,
-  socketTimeoutMS: 45000,
-  connectTimeoutMS: 10000,
-  retryWrites: true,
-  retryReads: true,
-  bufferCommands: false,
-};
 
-// Create separate connection to LMS database
-const lmsConnection = mongoose.createConnection(LMS_DB_URI, connectionOptions);
+try {
+  // Connection options
+  const connectionOptions = {
+    maxPoolSize: 5,           // Smaller pool since this is secondary connection
+    minPoolSize: 1,
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+    connectTimeoutMS: 10000,
+    retryWrites: true,
+    retryReads: true,
+    bufferCommands: false,
+  };
 
-// Connection event handlers
-lmsConnection.on('connected', () => {
-  console.log('✅ [LMS DATABASE] Connected to LMS MongoDB');
-});
+  // Create separate connection to LMS database
+  const lmsConnection = mongoose.createConnection(LMS_DB_URI, connectionOptions);
 
-lmsConnection.on('disconnected', () => {
-  console.log('❌ [LMS DATABASE] Disconnected from LMS MongoDB');
-});
+  // Connection event handlers
+  lmsConnection.on('connected', () => {
+    console.log('✅ [LMS DATABASE] Connected to LMS MongoDB');
+  });
 
-lmsConnection.on('error', (error) => {
-  console.error('💥 [LMS DATABASE] Connection error:', error.message);
-});
+  lmsConnection.on('disconnected', () => {
+    console.log('❌ [LMS DATABASE] Disconnected from LMS MongoDB');
+  });
+
+  lmsConnection.on('error', (error) => {
+    console.error('💥 [LMS DATABASE] Connection error:', error.message);
+  });
+} catch (error) {
+  console.error('💥 [LMS DATABASE] Failed to create connection:', error.message);
+}
+
 
 module.exports = lmsConnection;

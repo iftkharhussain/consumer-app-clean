@@ -31,3 +31,6 @@ module.exports = {
     }
   ]
 };
+
+
+// pm2 start ecosystem.config.js --only consumer-app-prod
