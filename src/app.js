@@ -2,9 +2,13 @@
  * Consumer App API - Main Application File
  */
 
+// Load environment variables based on NODE_ENV or env file argument
+const path = require('path');
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
+require('dotenv').config({ path: path.resolve(process.cwd(), envFile) });
+
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 const cookieParser = require('cookie-parser');
 const connectDB = require('./config/database');
 const config = require('./config');

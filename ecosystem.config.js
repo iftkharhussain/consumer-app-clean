@@ -19,9 +19,9 @@ module.exports = {
       script: 'src/app.js',
       instances: 2,
       exec_mode: 'cluster',
-      interpreter: 'node',
-      interpreter_args: '-r dotenv/config',
-      args: 'dotenv_config_path=.env.production',
+      env: {
+        NODE_ENV: 'production'
+      },
       error_file: './logs/pm2-error-prod.log',
       out_file: './logs/pm2-out-prod.log',
       time: true,
