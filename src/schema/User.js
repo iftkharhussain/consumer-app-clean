@@ -89,6 +89,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: 'fr',
   },
+  profession: {
+    type: String,
+    trim: true,
+  },
   
   // Status
   status: {

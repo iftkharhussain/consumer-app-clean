@@ -86,6 +86,15 @@ router.get('/verify', authMiddleware, authController.verifyAuth);
 router.get('/me', authMiddleware, authController.getCurrentUser);
 
 /**
+ * PUT /api/auth/profile
+ * 
+ * Update user profile information.
+ * Requires authentication.
+ * Body: { firstName?: string, lastName?: string, profilePhone?: string, profession?: string }
+ */
+router.put('/profile', authMiddleware, authController.updateProfile);
+
+/**
  * POST /api/auth/logout
  * 
  * Logout the current user (clears session).

@@ -391,6 +391,7 @@ async function getCurrentUser(req, res) {
       success: true,
       user: {
         id: user._id,
+        _id: user._id,
         email: user.email,
         phone: user.phone,
         fullName: user.fullName || user.displayName,
@@ -402,6 +403,9 @@ async function getCurrentUser(req, res) {
         product: user.leadSystemInfo?.product,
         emailVerified: user.emailVerified,
         phoneVerified: user.phoneVerified,
+        profession: user.profession,
+        profilePhone: user.phone,
+        profilePic: user.avatar,
         createdAt: user.createdAt
       }
     });
@@ -751,6 +755,7 @@ async function verifyAuth(req, res) {
       message: 'Token verified',
       data: {
         id: user._id,
+        _id: user._id,
         email: user.email,
         phone: user.phone,
         fullName: user.fullName || user.displayName,
@@ -761,7 +766,10 @@ async function verifyAuth(req, res) {
         isLeadUser: user.leadSystemInfo?.isLeadUser,
         product: user.leadSystemInfo?.product,
         emailVerified: user.emailVerified,
-        phoneVerified: user.phoneVerified
+        phoneVerified: user.phoneVerified,
+        profession: user.profession,
+        profilePhone: user.profilePhone || user.phone,
+        profilePic: user.avatar
       }
     });
 
@@ -770,6 +778,147 @@ async function verifyAuth(req, res) {
     return res.status(500).json({
       success: false,
       message: 'An error occurred'
+    });
+  }
+}
+
+/**
+ * Update Profile
+ * 
+ * PUT /api/auth/profile
+ * Body: { firstName?: string, lastName?: string, profilePhone?: string, profession?: string }
+ */
+async function updateProfile(req, res) {
+  try {
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Not authenticated'
+      });
+    }
+
+    const { firstName, lastName, profilePhone, profession } = req.body;
+
+    // Find user
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Update fields if provided
+    if (firstName !== undefined) user.firstName = firstName.trim();
+    if (lastName !== undefined) user.lastName = lastName.trim();
+    if (profilePhone !== undefined) user.phone = profilePhone.trim();
+    if (profession !== undefined) user.profession = profession.trim();
+
+    // Update fullName
+    if (firstName || lastName) {
+      user.fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+    }
+
+    await user.save();
+
+    logger.info('Profile updated successfully', { userId: user._id });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: {
+        id: user._id,
+        _id: user._id,
+        email: user.email,
+        phone: user.phone,
+        fullName: user.fullName,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        avatar: user.avatar,
+        language: user.language,
+        profession: user.profession,
+        profilePhone: user.phone,
+        profilePic: user.avatar
+      }
+    });
+
+  } catch (error) {
+    logger.error('Update profile error', { error: error.message });
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update profile'
+    });
+  }
+}
+
+/**
+ * Upload Profile Picture
+ * 
+ * POST /app/profile-pic
+ * Query: userId
+ * File: file (multipart/form-data)
+ */
+async function uploadProfilePicture(req, res) {
+  try {
+    const userId = req.query.userId || req.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User ID is required'
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded'
+      });
+    }
+
+    // Find user
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Delete old profile picture if exists
+    if (user.avatar) {
+      const oldFilePath = require('path').join(__dirname, '../..', user.avatar);
+      const fs = require('fs');
+      if (fs.existsSync(oldFilePath)) {
+        fs.unlinkSync(oldFilePath);
+      }
+    }
+
+    // Update user avatar path
+    const avatarPath = `/uploads/profiles/${req.file.filename}`;
+    user.avatar = avatarPath;
+    await user.save();
+
+    logger.info('Profile picture updated successfully', { userId: user._id });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Profile picture uploaded successfully',
+      data: {
+        profilePic: avatarPath,
+        avatar: avatarPath
+      }
+    });
+
+  } catch (error) {
+    logger.error('Upload profile picture error', { error: error.message });
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to upload profile picture'
     });
   }
 }
@@ -790,5 +939,9 @@ module.exports = {
   logout,
   verifyLeadToken,
   generateSessionToken,
-  syncLeadProducts
+  syncLeadProducts,
+  
+  // Profile management
+  updateProfile,
+  uploadProfilePicture
 };

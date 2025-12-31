@@ -15,6 +15,9 @@ const config = require('./config');
 const logger = require('./utils/logger');
 const requestLogger = require('./middlewares/requestLogger');
 const { errorHandler, notFound } = require('./middlewares/errorHandler');
+const { authMiddleware } = require('./middlewares/auth');
+const { uploadSingle } = require('./middlewares/upload');
+const authController = require('./controllers/authController');
 const routes = require('./routes');
 
 // Initialize Express app
@@ -62,9 +65,14 @@ app.use('/question-form', express.static(path.join(__dirname, '..', 'question-fo
 // Serve static files from the public directory (React build)
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // Request logging (only errors and slow requests)
 app.use(requestLogger);
+
+// Profile picture upload endpoint (before API routes to avoid conflicts)
+app.post('/app/profile-pic', authMiddleware, uploadSingle, authController.uploadProfilePicture);
 
 // API Routes
 app.use('/api', routes);
