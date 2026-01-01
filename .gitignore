@@ -21,3 +21,4 @@ Fortus documentation
 logs/
 .pm2/
 pids/
+*.md

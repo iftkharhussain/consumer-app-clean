@@ -20,17 +20,17 @@ const requestQuote = async (req, res) => {
   try {
     const userId = req.userId;
     const { productSlug, userProductId } = req.body;
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
         message: 'Authentication required'
       });
     }
-    
+
     // Find the user product
     let userProduct;
-    
+
     if (userProductId) {
       userProduct = await UserProduct.findOne({
         _id: userProductId,
@@ -45,14 +45,14 @@ const requestQuote = async (req, res) => {
         message: 'Either productSlug or userProductId is required'
       });
     }
-    
+
     if (!userProduct) {
       return res.status(404).json({
         success: false,
         message: 'Product not found for this user'
       });
     }
-    
+
     // Check if quote is already being fetched
     if (userProduct.quoteStatus === 'fetching') {
       return res.status(200).json({
@@ -62,7 +62,7 @@ const requestQuote = async (req, res) => {
         userProductId: userProduct._id
       });
     }
-    
+
     // Check if quote already exists and is successful
     if (userProduct.quoteStatus === 'success') {
       return res.status(200).json({
@@ -72,17 +72,17 @@ const requestQuote = async (req, res) => {
         userProductId: userProduct._id
       });
     }
-    
+
     // Update quote status to fetching
     await userProduct.updateQuoteStatus('fetching');
-    
+
     logger.info('Requesting quote from LMS', {
       userProductId: userProduct._id,
       leadId: userProduct.leadId,
       productId: userProduct.productId,
       leadProductId: userProduct.leadProductId
     });
-    
+
     // Request quote from LMS
     const result = await quoteService.requestQuote({
       leadId: userProduct.leadId.toString(),
@@ -90,7 +90,7 @@ const requestQuote = async (req, res) => {
       leadProductId: userProduct.leadProductId?.toString(),
       userProductId: userProduct._id.toString()
     });
-    
+
     // Update quote status based on result
     if (result.success) {
       if (result.quoteExists) {
@@ -98,7 +98,7 @@ const requestQuote = async (req, res) => {
       } else {
         await userProduct.updateQuoteStatus('success');
       }
-      
+
       return res.status(200).json({
         success: true,
         message: result.message,
@@ -108,7 +108,7 @@ const requestQuote = async (req, res) => {
       });
     } else {
       await userProduct.updateQuoteStatus('failed', result.message);
-      
+
       return res.status(200).json({
         success: false,
         message: result.message,
@@ -117,13 +117,13 @@ const requestQuote = async (req, res) => {
         error: result.error
       });
     }
-    
+
   } catch (error) {
     logger.error('QuoteController.requestQuote error', {
       message: error.message,
       stack: error.stack
     });
-    
+
     return res.status(500).json({
       success: false,
       message: 'An error occurred while requesting quote'
@@ -142,17 +142,17 @@ const getQuoteStatus = async (req, res) => {
     const userId = req.userId;
     const { userProductId } = req.params;
     const { productSlug } = req.query;
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
         message: 'Authentication required'
       });
     }
-    
+
     // Find the user product
     let userProduct;
-    
+
     if (userProductId) {
       userProduct = await UserProduct.findOne({
         _id: userProductId,
@@ -167,14 +167,14 @@ const getQuoteStatus = async (req, res) => {
         message: 'Either userProductId or productSlug is required'
       });
     }
-    
+
     if (!userProduct) {
       return res.status(404).json({
         success: false,
         message: 'Product not found for this user'
       });
     }
-    
+
     // Return local status
     return res.status(200).json({
       success: true,
@@ -188,12 +188,12 @@ const getQuoteStatus = async (req, res) => {
       quoteCompletedAt: userProduct.quoteCompletedAt,
       quoteError: userProduct.quoteError
     });
-    
+
   } catch (error) {
     logger.error('QuoteController.getQuoteStatus error', {
       message: error.message
     });
-    
+
     return res.status(500).json({
       success: false,
       message: 'An error occurred while getting quote status'
@@ -210,35 +210,35 @@ const getQuoteDetails = async (req, res) => {
   try {
     const userId = req.userId;
     const { userProductId } = req.params;
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
         message: 'Authentication required'
       });
     }
-    
+
     // Find the user product
     const userProduct = await UserProduct.findOne({
       _id: userProductId,
       userId,
       status: 'active'
     });
-    
+
     if (!userProduct) {
       return res.status(404).json({
         success: false,
         message: 'Product not found'
       });
     }
-    
+
     // Fetch quote record from LMS database (read-only access via shared DB)
     const quoteRecord = await lmsDB.quoteRecords.findOne({
       appLeadId: userProduct.leadId,
       productId: userProduct.productId,
       status: 'success'
     });
-    
+
     if (!quoteRecord) {
       return res.status(404).json({
         success: false,
@@ -246,14 +246,14 @@ const getQuoteDetails = async (req, res) => {
         quoteStatus: userProduct.quoteStatus
       });
     }
-    
+
     // Get carriers with fallback to responseBody
     let carriers = quoteRecord.carriers || [];
     const hasIncompleteCarriers = carriers.length > 0 && !carriers[0]?.carrierName && !carriers[0]?.name;
     if ((carriers.length === 0 || hasIncompleteCarriers) && quoteRecord.responseBody?.carriers) {
       carriers = quoteRecord.responseBody.carriers;
     }
-    
+
     // Return quote details (without sensitive data)
     return res.status(200).json({
       success: true,
@@ -273,12 +273,12 @@ const getQuoteDetails = async (req, res) => {
         productName: userProduct.productName
       }
     });
-    
+
   } catch (error) {
     logger.error('QuoteController.getQuoteDetails error', {
       message: error.message
     });
-    
+
     return res.status(500).json({
       success: false,
       message: 'An error occurred while getting quote details'
@@ -294,16 +294,16 @@ const getQuoteDetails = async (req, res) => {
 const getUserProducts = async (req, res) => {
   try {
     const userId = req.userId;
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
         message: 'Authentication required'
       });
     }
-    
+
     const userProducts = await UserProduct.findByUserId(userId);
-    
+
     return res.status(200).json({
       success: true,
       products: userProducts.map(up => ({
@@ -319,12 +319,12 @@ const getUserProducts = async (req, res) => {
         createdAt: up.createdAt
       }))
     });
-    
+
   } catch (error) {
     logger.error('QuoteController.getUserProducts error', {
       message: error.message
     });
-    
+
     return res.status(500).json({
       success: false,
       message: 'An error occurred while getting user products'
@@ -348,30 +348,30 @@ const fetchQuote = async (req, res) => {
     const userId = req.userId;
     const { productSlug } = req.query;
     const requestId = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-    
+
     logger.info('QuoteController.fetchQuote called', {
       userId,
       productSlug,
       requestId
     });
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
         message: 'Authentication required'
       });
     }
-    
+
     if (!productSlug) {
       return res.status(400).json({
         success: false,
         message: 'productSlug is required'
       });
     }
-    
+
     // Find the user's product
     let userProduct = await UserProduct.findByUserAndSlug(userId, productSlug);
-    
+
     if (!userProduct) {
       // Product not found - try to sync from LMS
       logger.info('Product not found, attempting to sync from LMS', {
@@ -379,20 +379,20 @@ const fetchQuote = async (req, res) => {
         productSlug,
         requestId
       });
-      
+
       // Get user to find leadId
       const User = require('../schema/User');
       const user = await User.findById(userId);
-      
+
       if (user?.leadSystemInfo?.leadId) {
         // Try syncing products from LMS
         const { syncLeadProducts } = require('./authController');
         await syncLeadProducts(userId, user.leadSystemInfo.leadId);
-        
+
         // Try finding the product again
         userProduct = await UserProduct.findByUserAndSlug(userId, productSlug);
       }
-      
+
       if (!userProduct) {
         return res.status(404).json({
           success: false,
@@ -400,7 +400,7 @@ const fetchQuote = async (req, res) => {
         });
       }
     }
-    
+
     logger.info('Found user product', {
       userProductId: userProduct._id,
       leadId: userProduct.leadId,
@@ -408,21 +408,47 @@ const fetchQuote = async (req, res) => {
       quoteStatus: userProduct.quoteStatus,
       requestId
     });
-    
-    // If quote is already being fetched, return current status
+
+    // If quote is already being fetched, check if it's stale (older than 2 minutes)
     if (userProduct.quoteStatus === 'fetching') {
-      logger.info('Quote already being fetched, returning early', {
-        userProductId: userProduct._id,
-        requestId
-      });
-      return res.status(200).json({
-        success: true,
-        message: 'Quote is being fetched',
-        quoteStatus: 'fetching',
-        userProductId: userProduct._id
-      });
+      const fetchingTimeout = 2 * 60 * 1000; // 2 minutes
+      const statusAge = userProduct.quoteStatusUpdatedAt
+        ? Date.now() - new Date(userProduct.quoteStatusUpdatedAt).getTime()
+        : fetchingTimeout + 1; // If no timestamp, consider it stale
+
+      if (statusAge < fetchingTimeout) {
+        logger.info('Quote already being fetched, returning early', {
+          userProductId: userProduct._id,
+          statusAge: statusAge / 1000,
+          requestId
+        });
+        return res.status(200).json({
+          success: true,
+          message: 'Quote is being fetched',
+          quoteStatus: 'fetching',
+          userProductId: userProduct._id
+        });
+      } else {
+        // Status is stale - ACTUALLY reset it to pending so we can re-fetch
+        logger.info('Quote fetching status is stale, resetting to pending', {
+          userProductId: userProduct._id,
+          statusAge: statusAge / 1000,
+          requestId
+        });
+
+        // Force reset the stale status
+        await UserProduct.findByIdAndUpdate(userProduct._id, {
+          $set: {
+            quoteStatus: 'pending',
+            quoteStatusUpdatedAt: new Date()
+          }
+        });
+
+        // Refresh the userProduct object
+        userProduct.quoteStatus = 'pending';
+      }
     }
-    
+
     // If quote already exists and is successful, fetch and return details
     if (userProduct.quoteStatus === 'success') {
       // Get quote details from LMS
@@ -430,17 +456,17 @@ const fetchQuote = async (req, res) => {
         appLeadId: userProduct.leadId,
         status: 'success'
       });
-      
+
       if (quoteRecord) {
         // Get carriers from the stored carriers array or from responseBody
         let carriers = quoteRecord.carriers || [];
-        
+
         // If carriers array is empty OR has incomplete data (no carrierName), use responseBody.carriers
         const hasIncompleteCarriers = carriers.length > 0 && !carriers[0]?.carrierName && !carriers[0]?.name;
         if ((carriers.length === 0 || hasIncompleteCarriers) && quoteRecord.responseBody?.carriers) {
           carriers = quoteRecord.responseBody.carriers;
         }
-        
+
         return res.status(200).json({
           success: true,
           message: 'Quote already exists',
@@ -457,7 +483,7 @@ const fetchQuote = async (req, res) => {
         });
       }
     }
-    
+
     // Quote doesn't exist or failed - request new quote from LMS
     logger.info('Requesting quote from LMS', {
       userProductId: userProduct._id,
@@ -465,7 +491,7 @@ const fetchQuote = async (req, res) => {
       productId: userProduct.productId,
       requestId
     });
-    
+
     // Use atomic update to prevent race conditions
     // Only update to 'fetching' if current status is not 'fetching'
     const updateResult = await UserProduct.findOneAndUpdate(
@@ -474,14 +500,14 @@ const fetchQuote = async (req, res) => {
         quoteStatus: { $ne: 'fetching' }  // Only update if not already fetching
       },
       {
-        $set: { 
+        $set: {
           quoteStatus: 'fetching',
           quoteStatusUpdatedAt: new Date()
         }
       },
       { new: true }
     );
-    
+
     // If update didn't happen (document not found), another request is already fetching
     if (!updateResult) {
       logger.info('Quote fetch already in progress by another request', {
@@ -495,12 +521,12 @@ const fetchQuote = async (req, res) => {
         userProductId: userProduct._id
       });
     }
-    
+
     logger.info('Set quote status to fetching atomically', {
       userProductId: userProduct._id,
       requestId
     });
-    
+
     // Request quote from LMS
     const result = await quoteService.requestQuote({
       leadId: userProduct.leadId.toString(),
@@ -508,13 +534,13 @@ const fetchQuote = async (req, res) => {
       leadProductId: userProduct.leadProductId?.toString(),
       userProductId: userProduct._id.toString()
     });
-    
+
     logger.info('LMS quote response', {
       success: result.success,
       message: result.message,
       requestId
     });
-    
+
     // Update quote status based on result
     if (result.success) {
       await userProduct.updateQuoteStatus('success');
@@ -523,13 +549,13 @@ const fetchQuote = async (req, res) => {
         leadId: userProduct.leadId,
         requestId
       });
-      
+
       // Fetch the quote details from LMS
       const quoteRecord = await lmsDB.quoteRecords.findOne({
         appLeadId: userProduct.leadId,
         status: 'success'
       });
-      
+
       logger.info('Quote record lookup result', {
         found: !!quoteRecord,
         quoteRecordId: quoteRecord?._id,
@@ -537,7 +563,7 @@ const fetchQuote = async (req, res) => {
         carriersInResponseBody: quoteRecord?.responseBody?.carriers?.length || 0,
         requestId
       });
-      
+
       // Get carriers from the stored carriers array or from responseBody
       let carriers = [];
       if (quoteRecord) {
@@ -548,7 +574,7 @@ const fetchQuote = async (req, res) => {
           carriers = quoteRecord.responseBody.carriers;
         }
       }
-      
+
       return res.status(200).json({
         success: true,
         message: result.message || 'Quote fetched successfully',
@@ -571,9 +597,9 @@ const fetchQuote = async (req, res) => {
         error: result.error,
         requestId
       });
-      
+
       await userProduct.updateQuoteStatus('failed', result.message);
-      
+
       return res.status(200).json({
         success: false,
         message: result.message || 'Failed to fetch quote',
@@ -582,13 +608,13 @@ const fetchQuote = async (req, res) => {
         error: result.error
       });
     }
-    
+
   } catch (error) {
     logger.error('QuoteController.fetchQuote error', {
       message: error.message,
       stack: error.stack
     });
-    
+
     return res.status(500).json({
       success: false,
       message: 'An error occurred while fetching quote'

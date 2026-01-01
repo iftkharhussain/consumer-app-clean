@@ -5,15 +5,100 @@
  * - Request quotes
  * - Check quote status
  * - Get quote details
+ * - Get carrier configuration
  */
 
 const express = require('express');
 const router = express.Router();
 
 const quoteController = require('../controllers/quoteController');
-const { authMiddleware } = require('../middlewares/auth');
+const { authMiddleware, optionalAuthMiddleware } = require('../middlewares/auth');
+const carrierConfig = require('../config/carrierConfig');
 
-// All quote routes require authentication
+/**
+ * GET /api/quote/carriers
+ * Get enabled carriers for the frontend
+ * Returns only carriers that are enabled and available for quoting
+ * 
+ * No auth required - public endpoint for UI configuration
+ */
+router.get('/carriers', (req, res) => {
+    try {
+        const enabledCarriers = carrierConfig.getEnabledCarriers();
+        const featuredCarrier = carrierConfig.getFeaturedCarrier();
+
+        res.json({
+            success: true,
+            featuredCarrier,
+            carriers: enabledCarriers,
+            carrierCodes: enabledCarriers.map(c => c.code)
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get carrier configuration'
+        });
+    }
+});
+
+/**
+ * GET /api/quote/carriers/all
+ * Get all carriers with their enabled/disabled status
+ * Useful for admin or showing unavailable carriers as "coming soon"
+ */
+router.get('/carriers/all', (req, res) => {
+    try {
+        const allCarriers = carrierConfig.getAllCarriersWithStatus();
+        const featuredCarrier = carrierConfig.getFeaturedCarrier();
+
+        res.json({
+            success: true,
+            featuredCarrier,
+            defaultEnvironment: carrierConfig.getDefaultEnvironment(),
+            carriers: allCarriers
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get carrier configuration'
+        });
+    }
+});
+
+/**
+ * POST /api/quote/carriers/filter
+ * Filter requested carriers to enabled/disabled
+ * Body: { carriers: ['GC', 'UNI', 'PAF'] }
+ * Returns: { enabled: [...], disabled: [...] }
+ */
+router.post('/carriers/filter', (req, res) => {
+    try {
+        const { carriers = [] } = req.body;
+
+        if (!Array.isArray(carriers) || carriers.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'carriers array is required'
+            });
+        }
+
+        const result = carrierConfig.filterCarriers(carriers);
+
+        res.json({
+            success: true,
+            ...result
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Failed to filter carriers'
+        });
+    }
+});
+
+// ============================================
+// AUTHENTICATED ROUTES
+// ============================================
 router.use(authMiddleware);
 
 /**

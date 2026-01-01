@@ -54,6 +54,7 @@ function authMiddleware(req, res, next) {
     req.userId = decoded.userId;
     req.userEmail = decoded.email;
     req.userPhone = decoded.phone;
+    req.leadId = decoded.leadId;
 
     next();
   } catch (error) {
@@ -97,6 +98,7 @@ function optionalAuthMiddleware(req, res, next) {
         req.userId = decoded.userId;
         req.userEmail = decoded.email;
         req.userPhone = decoded.phone;
+        req.leadId = decoded.leadId;
       }
     }
 

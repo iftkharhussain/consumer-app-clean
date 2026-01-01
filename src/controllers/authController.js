@@ -24,6 +24,46 @@ const SESSION_SECRET = process.env.JWT_SECRET || 'session-secret-change-in-produ
 const SESSION_EXPIRY = '7d';
 
 /**
+ * Map product name/slug to frontend route
+ * @param {string} product - Product name or slug from token
+ * @returns {string} Frontend route to redirect to
+ */
+function getProductRedirectUrl(product) {
+  if (!product) return '/dashboard';
+
+  // Normalize product to lowercase for comparison
+  const normalizedProduct = product.toLowerCase().replace(/\s+/g, '-');
+
+  // Product slug to route mapping
+  const productRoutes = {
+    'car-insurance': '/car-insurance',
+    'auto-insurance': '/car-insurance',
+    'automobile': '/car-insurance',
+    'home-insurance': '/home-insurance',
+    'habitation': '/home-insurance',
+    'life-insurance': '/life-insurance',
+    'assurance-vie': '/life-insurance',
+    'travel-insurance': '/travel-insurance',
+    'assurance-voyage': '/travel-insurance',
+  };
+
+  // Check for exact match first
+  if (productRoutes[normalizedProduct]) {
+    return productRoutes[normalizedProduct];
+  }
+
+  // Check for partial match (e.g., "Assurance Auto" contains "auto")
+  for (const [key, route] of Object.entries(productRoutes)) {
+    if (normalizedProduct.includes(key) || key.includes(normalizedProduct)) {
+      return route;
+    }
+  }
+
+  // Default to dashboard if no matching product route
+  return '/dashboard';
+}
+
+/**
  * Verify lead login token from the lead management system
  * @param {string} token - JWT token from lead system
  * @returns {Object} Verification result
@@ -57,14 +97,16 @@ function verifyLeadToken(token) {
 /**
  * Generate session JWT for the consumer app
  * @param {Object} user - User document
+ * @param {string} leadId - Optional lead ID from LMS
  * @returns {string} Session JWT
  */
-function generateSessionToken(user) {
+function generateSessionToken(user, leadId = null) {
   return jwt.sign(
     {
       userId: user._id,
       email: user.email,
       phone: user.phone,
+      leadId: leadId || user.leadSystemInfo?.leadId || null,
       type: 'session'
     },
     SESSION_SECRET,
@@ -84,38 +126,38 @@ async function syncLeadProducts(userId, leadId) {
   try {
     const mongoose = require('mongoose');
     const leadObjectId = new mongoose.Types.ObjectId(leadId);
-    
+
     logger.info('Syncing lead products', { userId, leadId });
-    
+
     // Fetch lead_products from LMS database
     // Note: lmsDB.leadProducts.find() is now async and returns a cursor
     const cursor = await lmsDB.leadProducts.find({ leadId: leadObjectId });
     const leadProducts = await cursor.toArray();
-    
+
     if (!leadProducts || leadProducts.length === 0) {
       logger.info('No lead products found for leadId', { leadId });
       return [];
     }
-    
+
     logger.info('Found lead products from LMS', { leadId, count: leadProducts.length });
-    
+
     // Fetch product details for slugs/names
     const productIds = leadProducts.map(lp => lp.product);
     const productsCursor = await lmsDB.products.find({ _id: { $in: productIds } });
     const products = await productsCursor.toArray();
     const productMap = new Map(products.map(p => [p._id.toString(), p]));
-    
+
     const syncedProducts = [];
-    
+
     for (const lp of leadProducts) {
       const product = productMap.get(lp.product?.toString());
-      
+
       // Check if user_product already exists
       const existingProduct = await UserProduct.findOne({
         leadId: leadObjectId,
         leadProductId: lp._id,
       });
-      
+
       if (existingProduct) {
         // Update if exists
         existingProduct.userId = userId;
@@ -147,19 +189,19 @@ async function syncLeadProducts(userId, leadId) {
         syncedProducts.push(userProduct);
       }
     }
-    
-    logger.info('Synced lead products to user_products', { 
-      userId, 
-      leadId, 
-      syncedCount: syncedProducts.length 
+
+    logger.info('Synced lead products to user_products', {
+      userId,
+      leadId,
+      syncedCount: syncedProducts.length
     });
-    
+
     return syncedProducts;
   } catch (error) {
-    logger.error('Error syncing lead products', { 
-      userId, 
-      leadId, 
-      error: error.message 
+    logger.error('Error syncing lead products', {
+      userId,
+      leadId,
+      error: error.message
     });
     // Don't throw - we don't want to fail login if product sync fails
     return [];
@@ -224,7 +266,7 @@ async function leadLogin(req, res) {
         phoneMismatch: credentialsMismatch.phoneMismatch,
         emailMismatch: credentialsMismatch.emailMismatch
       });
-      
+
       return res.status(403).json({
         success: false,
         requiresManualLogin: true,
@@ -250,8 +292,9 @@ async function leadLogin(req, res) {
       userProducts = await syncLeadProducts(user._id, user.leadSystemInfo.leadId);
     }
 
-    // Generate session token
-    const sessionToken = generateSessionToken(user);
+    // Generate session token with leadId for faster quote operations
+    const leadId = tokenData.leadId || user.leadSystemInfo?.leadId;
+    const sessionToken = generateSessionToken(user, leadId);
 
     logger.info('Lead login successful', {
       userId: user._id,
@@ -294,7 +337,7 @@ async function leadLogin(req, res) {
       isNewUser: isNew,
       userAlreadyExists: !isNew, // Flag for frontend to show appropriate message
       products, // Include synced products
-      redirectTo: '/dashboard' // Default redirect after login
+      redirectTo: getProductRedirectUrl(tokenData.product) // Redirect based on product
     });
 
   } catch (error) {
@@ -452,19 +495,19 @@ async function login(req, res) {
     }
 
     // Find user by email and include password for verification
-   
+
     try {
       const collections = await User.db.db.listCollections().toArray();
-      
+
       const userCount = await User.countDocuments();
-      
+
       if (userCount > 0) {
         const sampleUsers = await User.find({}, 'email role isAdmin').limit(3);
       }
     } catch (dbError) {
       console.error('   Database Debug Error:', dbError.message);
     }
-    
+
     const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
 
     if (!user) {
@@ -484,7 +527,7 @@ async function login(req, res) {
 
     // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    
+
     if (!isPasswordValid) {
       console.log('Invalid password for user:', user.email);
       return res.status(401).json({
@@ -927,12 +970,12 @@ module.exports = {
   // Lead-based authentication
   leadLogin,
   checkToken,
-  
+
   // Traditional authentication
   login,
   phoneLogin,
   register,
-  
+
   // Shared
   getCurrentUser,
   verifyAuth,
@@ -940,7 +983,7 @@ module.exports = {
   verifyLeadToken,
   generateSessionToken,
   syncLeadProducts,
-  
+
   // Profile management
   updateProfile,
   uploadProfilePicture
