@@ -1,6 +1,28 @@
 /**
  * LMS Database Access for Consumer App (READ-ONLY)
  * 
+ * @deprecated This module is DEPRECATED as of January 2026.
+ * 
+ * Direct database access is being replaced with API-based communication.
+ * Please use `src/services/lmsApiService.js` instead:
+ * 
+ *   - lmsApiService.getLeadProducts(leadId)   → replaces lmsDB.leadProducts.find()
+ *   - lmsApiService.getQuoteByLeadId(leadId)  → replaces lmsDB.quoteRecords.findOne()
+ *   - lmsApiService.getQuoteById(quoteId)     → replaces lmsDB.quoteRecords.findOne()
+ *   - lmsApiService.getLeadQuotes(leadId)     → replaces lmsDB.quoteRecords.find()
+ * 
+ * Migration Benefits:
+ * - Decouples Consumer App from LMS database schema
+ * - LMS can change schema without breaking Consumer App
+ * - Better security - data is filtered/sanitized by LMS API
+ * - Easier to audit and monitor cross-app data access
+ * 
+ * This file will be removed once migration is complete and tested.
+ * 
+ * ============================================================================
+ * LEGACY DOCUMENTATION (for reference during migration):
+ * ============================================================================
+ * 
  * Provides READ-ONLY access to LMS database from Consumer App.
  * Write operations are blocked to prevent accidental data modification.
  * 
@@ -14,6 +36,9 @@
  * // Available: users, allLeads, leads, products, productCategories,
  * //            integrations, pipelines, stages, leadHistory
  */
+
+// Log deprecation warning on first load
+console.warn('[DEPRECATED] lmsCollections.js is deprecated. Please use lmsApiService.js instead.');
 
 const lmsConnection = require('./lmsDatabase');
 

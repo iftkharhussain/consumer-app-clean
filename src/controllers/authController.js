@@ -12,7 +12,9 @@ const bcrypt = require('bcryptjs');
 const User = require('../schema/User');
 const UserProduct = require('../schema/UserProduct');
 const logger = require('../utils/logger');
-const lmsDB = require('../config/lmsCollections');
+const lmsApiService = require('../services/lmsApiService');
+// Legacy: Direct DB access - to be deprecated
+// const lmsDB = require('../config/lmsCollections');
 
 // Use the same secret as the lead system for cross-app tokens
 const CROSS_APP_SECRET = process.env.CROSS_APP_JWT_SECRET || process.env.JWT_SECRET || 'cross-app-secret-key-change-in-production';
@@ -116,7 +118,10 @@ function generateSessionToken(user, leadId = null) {
 
 /**
  * Sync lead products from LMS to consumer app
- * Fetches lead_products from LMS by leadId and creates/updates user_products
+ * Fetches lead_products from LMS API and creates/updates user_products
+ * 
+ * Migration Note (Jan 2026):
+ * Now uses lmsApiService.getLeadProducts() instead of direct DB access.
  * 
  * @param {ObjectId} userId - Consumer app user ID
  * @param {string} leadId - LMS lead ID (from token)
@@ -127,30 +132,24 @@ async function syncLeadProducts(userId, leadId) {
     const mongoose = require('mongoose');
     const leadObjectId = new mongoose.Types.ObjectId(leadId);
 
-    logger.info('Syncing lead products', { userId, leadId });
+    logger.info('Syncing lead products via API', { userId, leadId });
 
-    // Fetch lead_products from LMS database
-    // Note: lmsDB.leadProducts.find() is now async and returns a cursor
-    const cursor = await lmsDB.leadProducts.find({ leadId: leadObjectId });
-    const leadProducts = await cursor.toArray();
+    // Fetch lead_products from LMS API (replaces direct DB access)
+    const result = await lmsApiService.getLeadProducts(leadId);
 
-    if (!leadProducts || leadProducts.length === 0) {
-      logger.info('No lead products found for leadId', { leadId });
+    if (!result.success || !result.products || result.products.length === 0) {
+      logger.info('No lead products found for leadId', { leadId, error: result.error });
       return [];
     }
 
-    logger.info('Found lead products from LMS', { leadId, count: leadProducts.length });
-
-    // Fetch product details for slugs/names
-    const productIds = leadProducts.map(lp => lp.product);
-    const productsCursor = await lmsDB.products.find({ _id: { $in: productIds } });
-    const products = await productsCursor.toArray();
-    const productMap = new Map(products.map(p => [p._id.toString(), p]));
+    const leadProducts = result.products;
+    logger.info('Found lead products from LMS API', { leadId, count: leadProducts.length });
 
     const syncedProducts = [];
 
     for (const lp of leadProducts) {
-      const product = productMap.get(lp.product?.toString());
+      // Product info is already included in the API response
+      const product = lp.product;
 
       // Check if user_product already exists
       const existingProduct = await UserProduct.findOne({
@@ -159,8 +158,17 @@ async function syncLeadProducts(userId, leadId) {
       });
 
       if (existingProduct) {
-        // Update if exists
+        // Update if exists - also update slug/name if they were missing
         existingProduct.userId = userId;
+        
+        // Fix missing slug/name from previous buggy syncs
+        if (!existingProduct.productSlug && product?.slug) {
+          existingProduct.productSlug = product.slug;
+        }
+        if (!existingProduct.productName && (product?.name || product?.title)) {
+          existingProduct.productName = product?.name || product?.title;
+        }
+        
         existingProduct.lmsMetadata = {
           content: lp.content,
           isVisited: lp.isVisited,
@@ -170,13 +178,17 @@ async function syncLeadProducts(userId, leadId) {
         syncedProducts.push(existingProduct);
       } else {
         // Create new user_product
+        // Use slug from API if available, otherwise try to generate from title/name
+        const productSlug = product?.slug || product?.key || null;
+        const productName = product?.name || product?.title || null;
+        
         const userProduct = new UserProduct({
           userId,
           leadId: leadObjectId,
           leadProductId: lp._id,
-          productId: lp.product,
-          productSlug: product?.slug || null,
-          productName: product?.title || product?.name || null,
+          productId: product?._id || lp.productId,
+          productSlug,
+          productName,
           status: 'active',
           quoteStatus: 'not_requested',
           lmsMetadata: {
@@ -185,6 +197,15 @@ async function syncLeadProducts(userId, leadId) {
             lmsStatus: lp.status,
           },
         });
+        
+        logger.info('Creating user_product', {
+          userId,
+          leadId,
+          productSlug,
+          productName,
+          productId: product?._id
+        });
+        
         await userProduct.save();
         syncedProducts.push(userProduct);
       }

@@ -108,34 +108,68 @@ userProductSchema.statics.findByUserId = function(userId) {
 };
 
 /**
- * Find product by user and product slug or name
- * Tries slug first, then falls back to matching product name
+ * Find ALL products matching a user and product slug
+ * Returns array - supports multiple products of same type (e.g., 2 car-insurance)
+ * 
  * @param {string} userId - User ID
  * @param {string} productSlug - Product slug (e.g., 'car-insurance')
+ * @returns {Promise<Array>} Array of matching products
  */
-userProductSchema.statics.findByUserAndSlug = async function(userId, productSlug) {
+userProductSchema.statics.findAllByUserAndSlug = async function(userId, productSlug) {
   // First try exact slug match
-  let product = await this.findOne({ userId, productSlug, status: 'active' });
+  let products = await this.find({ userId, productSlug, status: 'active' }).sort({ createdAt: -1 });
   
-  if (!product) {
+  if (products.length === 0) {
     // If slug is not found, try matching by productName
     // Convert slug to name pattern: 'car-insurance' -> 'car insurance'
     const namePattern = productSlug.replace(/-/g, ' ');
-    product = await this.findOne({
+    products = await this.find({
       userId,
       status: 'active',
       productName: { $regex: new RegExp(namePattern, 'i') }
-    });
+    }).sort({ createdAt: -1 });
   }
   
-  return product;
+  return products;
 };
 
 /**
- * Find product by leadId
+ * Find ONE product by user and product slug (returns most recent)
+ * For backwards compatibility - use findAllByUserAndSlug for multiple products
+ * 
+ * @param {string} userId - User ID
+ * @param {string} productSlug - Product slug (e.g., 'car-insurance')
+ * @param {string} leadId - Optional: specific lead ID to filter by
+ * @returns {Promise<Object|null>} Single product or null
+ */
+userProductSchema.statics.findByUserAndSlug = async function(userId, productSlug, leadId = null) {
+  // If leadId provided, find exact match
+  if (leadId) {
+    const mongoose = require('mongoose');
+    const leadObjectId = typeof leadId === 'string' ? new mongoose.Types.ObjectId(leadId) : leadId;
+    return this.findOne({ userId, leadId: leadObjectId, productSlug, status: 'active' });
+  }
+  
+  // Otherwise return most recent matching product
+  const products = await this.findAllByUserAndSlug(userId, productSlug);
+  return products.length > 0 ? products[0] : null;
+};
+
+/**
+ * Find ONE product by leadId (returns first active)
+ * Use findAllByLeadId if lead can have multiple products
  */
 userProductSchema.statics.findByLeadId = function(leadId) {
   return this.findOne({ leadId, status: 'active' });
+};
+
+/**
+ * Find ALL products for a leadId
+ * @param {ObjectId|string} leadId - Lead ID
+ * @returns {Promise<Array>} Array of products for this lead
+ */
+userProductSchema.statics.findAllByLeadId = function(leadId) {
+  return this.find({ leadId, status: 'active' }).sort({ createdAt: -1 });
 };
 
 /**

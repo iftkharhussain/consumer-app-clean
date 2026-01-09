@@ -103,10 +103,23 @@ router.use(authMiddleware);
 
 /**
  * POST /api/quote/request
- * Request a quote for a user's product
+ * Request a quote for a user's product (LEGACY - uses product lookup)
  * Body: { productSlug: string } or { userProductId: string }
  */
 router.post('/request', quoteController.requestQuote);
+
+/**
+ * POST /api/quote/request-direct
+ * Request a quote directly (SIMPLIFIED - no product lookup needed)
+ * Body: { 
+ *   leadId: string,        // Required - all_leads._id
+ *   carriers: string[],    // Optional - defaults to ['UNI']
+ *   environment: string,   // Optional - 'test' or 'production'
+ *   quoteType: string,     // Optional - 'auto' or 'home'
+ *   forceNew: boolean      // Optional - skip existing quote check
+ * }
+ */
+router.post('/request-direct', quoteController.requestQuoteDirect);
 
 /**
  * GET /api/quote/products
@@ -141,7 +154,55 @@ router.get('/details/:userProductId', quoteController.getQuoteDetails);
  * 3. If not, requests quote from LMS
  * 4. Returns quote results
  * Query: ?productSlug=car-insurance
+ * 
+ * NOTE: For multiple products of same type (e.g., 2 cars), use /fetch-by-id/:userProductId
  */
 router.get('/fetch', quoteController.fetchQuote);
+
+/**
+ * GET /api/quote/products/:productSlug
+ * Get ALL products matching a product type (supports multiple of same type)
+ * Example: /api/quote/products/car-insurance returns all car-insurance products
+ * 
+ * Use this to list multiple products before using fetch-by-id
+ */
+router.get('/products/:productSlug', quoteController.getProductsBySlug);
+
+/**
+ * GET /api/quote/fetch-by-id/:userProductId
+ * Fetch quote for a SPECIFIC product by its unique ID
+ * Essential for handling multiple products of same type (e.g., 2 car-insurance)
+ * 
+ * Use /products/:productSlug first to get list of userProductIds
+ */
+router.get('/fetch-by-id/:userProductId', quoteController.fetchQuoteById);
+
+// ============================================
+// ASYNC POLLING ENDPOINTS
+// ============================================
+
+/**
+ * GET /api/quote/poll/:quoteId
+ * Poll quote status by quoteId (Async Polling Pattern)
+ * 
+ * Call this every 5 seconds after requesting a quote until status is:
+ * - 'success': Quote completed successfully, includes carriers data
+ * - 'failed': Quote request failed
+ * - 'timeout': Quote timed out after 5 minutes
+ * 
+ * While polling, status will be:
+ * - 'pending': Quote request received, waiting to process
+ * - 'processing': Quote is being processed by carriers
+ */
+router.get('/poll/:quoteId', quoteController.pollQuoteStatus);
+
+/**
+ * GET /api/quote/by-lead/:leadId
+ * Get all quotes for a specific lead
+ * 
+ * Returns all quote records associated with a lead,
+ * useful for checking history or multiple quote attempts.
+ */
+router.get('/by-lead/:leadId', quoteController.getQuotesByLead);
 
 module.exports = router;

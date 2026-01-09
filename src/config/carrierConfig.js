@@ -127,9 +127,9 @@ const CARRIER_DEFINITIONS = {
     }
 };
 
-// Default carriers if not specified
-const DEFAULT_ENABLED_CARRIERS = ['GC', 'UNI', 'PAF', 'WAWA'];
-const DEFAULT_FEATURED_CARRIER = 'GC';
+// Default insurers if not specified
+const DEFAULT_ENABLED_INSURERS = ['pafco', 'lunique'];
+const DEFAULT_FEATURED_INSURER = 'pafco';
 
 /**
  * Get default environment
@@ -140,25 +140,43 @@ function getDefaultEnvironment() {
 }
 
 /**
- * Get featured carrier code
- * @returns {string} Carrier code (e.g., 'GC')
+ * Get featured insurer group name
+ * @returns {string} Insurer group (e.g., 'pafco', 'lunique')
  */
 function getFeaturedCarrier() {
-    return process.env.FEATURED_CARRIER || DEFAULT_FEATURED_CARRIER;
+    return (process.env.FEATURED_CARRIER || DEFAULT_FEATURED_INSURER).toLowerCase();
 }
 
 /**
- * Get list of enabled carrier codes from env
- * @returns {string[]} Array of carrier codes
+ * Get list of enabled insurer groups from env
+ * @returns {string[]} Array of insurer group names (e.g., ['pafco', 'lunique'])
  */
-function getEnabledCarrierCodes() {
+function getEnabledInsurerGroups() {
     const enabledList = process.env.ENABLED_CARRIERS;
 
     if (enabledList) {
-        return enabledList.split(',').map(c => c.trim().toUpperCase()).filter(Boolean);
+        return enabledList.split(',').map(c => c.trim().toLowerCase()).filter(Boolean);
     }
 
-    return DEFAULT_ENABLED_CARRIERS;
+    return DEFAULT_ENABLED_INSURERS;
+}
+
+/**
+ * Get list of enabled carrier codes based on enabled insurer groups
+ * @returns {string[]} Array of carrier codes
+ */
+function getEnabledCarrierCodes() {
+    const enabledInsurerGroups = getEnabledInsurerGroups();
+    const enabledCodes = [];
+
+    // Map insurer groups to carrier codes
+    Object.entries(CARRIER_DEFINITIONS).forEach(([code, def]) => {
+        if (enabledInsurerGroups.includes(def.group)) {
+            enabledCodes.push(code);
+        }
+    });
+
+    return enabledCodes;
 }
 
 /**
@@ -170,6 +188,17 @@ function isCarrierEnabled(code) {
     const upperCode = code.toUpperCase();
     const enabledCodes = getEnabledCarrierCodes();
     return enabledCodes.includes(upperCode);
+}
+
+/**
+ * Check if an insurer group is enabled
+ * @param {string} group - Insurer group name (e.g., 'pafco', 'lunique')
+ * @returns {boolean}
+ */
+function isInsurerEnabled(group) {
+    const lowerGroup = group.toLowerCase();
+    const enabledInsurerGroups = getEnabledInsurerGroups();
+    return enabledInsurerGroups.includes(lowerGroup);
 }
 
 /**
@@ -255,10 +284,30 @@ function filterCarriers(requestedCodes) {
 function getConfigSummary() {
     return {
         defaultEnvironment: getDefaultEnvironment(),
-        featuredCarrier: getFeaturedCarrier(),
+        featuredInsurer: getFeaturedCarrier(),
+        enabledInsurerGroups: getEnabledInsurerGroups(),
         enabledCarrierCodes: getEnabledCarrierCodes(),
         enabledCarriers: getEnabledCarriers()
     };
+}
+
+/**
+ * Get ALL carrier codes defined in CARRIER_DEFINITIONS
+ * Used for validation (checking if a carrier code is valid)
+ * @returns {string[]} Array of all valid carrier codes
+ */
+function getAllCarrierCodes() {
+    return Object.keys(CARRIER_DEFINITIONS);
+}
+
+/**
+ * Get all unique insurer groups
+ * @returns {string[]} Array of insurer group names
+ */
+function getAllInsurerGroups() {
+    const groups = new Set();
+    Object.values(CARRIER_DEFINITIONS).forEach(def => groups.add(def.group));
+    return Array.from(groups);
 }
 
 module.exports = {
@@ -269,6 +318,11 @@ module.exports = {
     getDefaultEnvironment,
     getFeaturedCarrier,
 
+    // Insurer-level operations
+    getEnabledInsurerGroups,
+    isInsurerEnabled,
+    getAllInsurerGroups,
+
     // Carrier-level checks
     isCarrierEnabled,
     getCarrierInfo,
@@ -276,6 +330,7 @@ module.exports = {
     // Bulk operations
     getEnabledCarriers,
     getEnabledCarrierCodes,
+    getAllCarrierCodes,
     getAllCarriersWithStatus,
     filterCarriers,
 
