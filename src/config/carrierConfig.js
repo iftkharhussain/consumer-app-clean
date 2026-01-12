@@ -124,6 +124,17 @@ const CARRIER_DEFINITIONS = {
         requiresCreditScore: true,
         quoteMethod: 'ratingWebService',
         logo: '/images/promutuel-logo.svg'
+    },
+
+    // Optimum
+    NATS: {
+        name: 'Optimum',
+        displayName: 'Optimum Assurance',
+        product: 'Standard',
+        group: 'optimum',
+        requiresCreditScore: true,
+        quoteMethod: 'ratingWebService',
+        logo: '/images/optimum-logo.svg'
     }
 };
 
