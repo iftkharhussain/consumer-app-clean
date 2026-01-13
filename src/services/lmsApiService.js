@@ -16,6 +16,10 @@ const logger = require('../utils/logger');
 const CROSS_APP_SECRET = process.env.CROSS_APP_JWT_SECRET || 'cross-app-secret-key-change-in-production';
 const LMS_API_URL = process.env.NORGA_APP_SERVER || process.env.LMS_API_URL || 'http://localhost:3024';
 
+// Debug: Log secret on startup (first 10 chars only for security)
+console.log('[LmsApiService] Consumer CROSS_APP_SECRET loaded:', CROSS_APP_SECRET ? `${CROSS_APP_SECRET.substring(0, 10)}... (length: ${CROSS_APP_SECRET.length})` : 'NOT SET');
+console.log('[LmsApiService] LMS_API_URL:', LMS_API_URL);
+
 /**
  * Generate a cross-app request token
  * @param {Object} payload - Data to include in token
@@ -23,7 +27,7 @@ const LMS_API_URL = process.env.NORGA_APP_SERVER || process.env.LMS_API_URL || '
  * @returns {string} JWT token
  */
 const generateCrossAppToken = (payload, expiresIn = '5m') => {
-  return jwt.sign(
+  const token = jwt.sign(
     {
       ...payload,
       type: 'cross_app_request',
@@ -35,6 +39,8 @@ const generateCrossAppToken = (payload, expiresIn = '5m') => {
       expiresIn 
     }
   );
+  console.log('[LmsApiService] Generated token:', token.substring(0, 50) + '... (length: ' + token.length + ')');
+  return token;
 };
 
 /**
@@ -53,6 +59,8 @@ const lmsGet = async (endpoint, tokenPayload, queryParams = {}) => {
       url.searchParams.set(key, value);
     }
   });
+  
+  console.log('[LmsApiService] Making request to:', url.toString());
 
   const response = await axios.get(url.toString(), {
     headers: {
