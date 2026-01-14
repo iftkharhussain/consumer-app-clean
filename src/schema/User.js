@@ -157,7 +157,7 @@ userSchema.virtual('displayName').get(function() {
 
 // Static method to find or create user from lead data
 userSchema.statics.findOrCreateFromLead = async function(leadData) {
-  const { phone, email, fullName, leadId, product, leadType } = leadData;
+  const { phone, email, fullName, firstName, lastName, leadId, product, leadType } = leadData;
   
   // Try to find existing user by phone or email
   let user = await this.findOne({
@@ -196,6 +196,10 @@ userSchema.statics.findOrCreateFromLead = async function(leadData) {
       }
     }
     
+    // Check if user data has changed (name or email different)
+    const dataHasChanged = (fullName && fullName !== user.fullName) || 
+                          (email && email.toLowerCase() !== user.email);
+    
     // Update existing user with lead info if needed
     let needsUpdate = false;
     
@@ -221,20 +225,33 @@ userSchema.statics.findOrCreateFromLead = async function(leadData) {
       await user.save();
     }
     
-    return { user, isNew: false, alreadyExists: true, credentialsMismatch };
+    return { 
+      user, 
+      isNew: false, 
+      alreadyExists: true, 
+      credentialsMismatch,
+      showResubmitAlert: dataHasChanged // Flag to show alert in consumer app
+    };
   }
   
   // Create new user from lead data
-  const [firstName, ...lastNameParts] = (fullName || '').split(' ');
-  const lastName = lastNameParts.join(' ');
+  // Use firstName/lastName from token if provided, otherwise split fullName
+  let userFirstName = firstName || '';
+  let userLastName = lastName || '';
+  
+  if (!userFirstName && !userLastName && fullName) {
+    const nameParts = fullName.split(' ');
+    userFirstName = nameParts[0] || '';
+    userLastName = nameParts.slice(1).join(' ') || '';
+  }
   
   try {
     user = await this.create({
       email: email?.toLowerCase(),
       phone,
-      fullName,
-      firstName: firstName || '',
-      lastName: lastName || '',
+      fullName: fullName || `${userFirstName} ${userLastName}`.trim(),
+      firstName: userFirstName,
+      lastName: userLastName,
       phoneVerified: true, // Phone was verified in lead submission
       authMethod: 'lead-token',
       leadSystemInfo: {

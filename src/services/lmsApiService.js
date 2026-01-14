@@ -13,11 +13,11 @@ const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const logger = require('../utils/logger');
 
-const CROSS_APP_SECRET = process.env.CROSS_APP_JWT_SECRET || 'cross-app-secret-key-change-in-production';
-const LMS_API_URL = process.env.NORGA_APP_SERVER || process.env.LMS_API_URL || 'http://localhost:3024';
+const CROSS_APP_SECRET = process.env.CROSS_APP_JWT_SECRET;
+const LMS_API_URL = process.env.NORGA_APP_SERVER;
 
 // Debug: Log secret on startup (first 10 chars only for security)
-console.log('[LmsApiService] Consumer CROSS_APP_SECRET loaded:', CROSS_APP_SECRET ? `${CROSS_APP_SECRET.substring(0, 10)}... (length: ${CROSS_APP_SECRET.length})` : 'NOT SET');
+console.log('[LmsApiService] Consumer CROSS_APP_SECRET loaded:', CROSS_APP_SECRET);
 console.log('[LmsApiService] LMS_API_URL:', LMS_API_URL);
 
 /**

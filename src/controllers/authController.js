@@ -270,10 +270,12 @@ async function leadLogin(req, res) {
     const tokenData = verification.data;
 
     // Find or create user from lead data
-    const { user, isNew, credentialsMismatch, requiresManualLogin } = await User.findOrCreateFromLead({
+    const { user, isNew, credentialsMismatch, requiresManualLogin, showResubmitAlert } = await User.findOrCreateFromLead({
       phone: tokenData.phone,
       email: tokenData.email,
       fullName: tokenData.fullName,
+      firstName: tokenData.firstName,
+      lastName: tokenData.lastName,
       leadId: tokenData.leadId,
       product: tokenData.product,
       leadType: tokenData.leadType
@@ -357,6 +359,7 @@ async function leadLogin(req, res) {
       sessionToken,
       isNewUser: isNew,
       userAlreadyExists: !isNew, // Flag for frontend to show appropriate message
+      showResubmitAlert: showResubmitAlert || false, // Show alert if user resubmitted with different info
       products, // Include synced products
       redirectTo: getProductRedirectUrl(tokenData.product) // Redirect based on product
     });
