@@ -1,0 +1,364 @@
+/**
+ * Mobile Responsive Styles for Navbar and Sidebar
+ * Author: Norga Development Team
+ * Description: Separate responsive file for mobile navbar and sidebar
+ * Base Design: 375px width for mobile
+ * Breakpoints: 375px, 576px, 768px, 992px
+ */
+
+/* ============================================
+   MOBILE NAVBAR HEADER STYLES - 375px
+   ============================================ */
+
+/* Mobile Header for 375px and up */
+@media (max-width: 768px) {
+
+    /* Mobile Header Container */
+    .mobile-navbar-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        background: #FFFFFF;
+        border-bottom: 1px solid #E3E8EF;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        height: 64px;
+    }
+
+    /* Logo Container */
+    .mobile-navbar-header .logo-container {
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+    }
+
+    /* Logo Image */
+    .mobile-navbar-header .logo-container img.norga-logo {
+        width: 100px;
+        flex-shrink: 0;
+    }
+
+    /* Version Text */
+    .mobile-navbar-header .logo-container .version-text {
+        color: #7E7E7E;
+        font-family: Inter, sans-serif;
+        font-size: 14px;
+        font-style: normal;
+        font-weight: 400;
+        line-height: normal;
+    }
+
+    /* Menu Icon Button */
+    .mobile-navbar-header .menu-icon-button {
+        display: flex;
+        padding: 0px;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        border-radius: 8px;
+        background: var(--Base-White, #FFF);
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .mobile-navbar-header .menu-icon-button:hover {
+        background: #F8FAFC;
+    }
+
+    .mobile-navbar-header .menu-icon-button:active {
+        background: #EEF2F6;
+    }
+
+    /* Menu Icon Image */
+    .mobile-navbar-header .menu-icon-button img {
+        width: 40px;
+    }
+
+    /* Hide desktop sidebar on mobile */
+    body.mobile-view .appSidebar {
+        transform: translateX(-100%) !important;
+        transition: transform 0.3s ease-in-out;
+    }
+
+    /* Show sidebar when menu is open */
+    body.mobile-view.sidebar-open .appSidebar {
+        transform: translateX(0) !important;
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        z-index: 1002;
+        width: 280px !important;
+        min-width: 280px !important;
+    }
+
+    /* Overlay for mobile sidebar */
+    .mobile-sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1001;
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+    }
+
+    body.mobile-view.sidebar-open .mobile-sidebar-overlay {
+        display: block;
+        opacity: 1;
+    }
+
+    /* Adjust main content for mobile header */
+    body.mobile-view .main-body-wrapper {
+        padding-top: 95px !important;
+    }
+
+    /* Adjust content margin for mobile */
+    body.mobile-view .ant-layout-content {
+        margin-left: 0 !important;
+    }
+}
+
+/* ============================================
+   SPECIFIC BREAKPOINT: 375px
+   ============================================ */
+@media (max-width: 375px) {
+    .mobile-navbar-header {
+        padding: 12px 16px;
+    }
+
+    .mobile-navbar-header .logo-container img.norga-logo {
+        width: 90px;
+        height: auto;
+    }
+
+    .mobile-navbar-header .logo-container .version-text {
+        font-size: 12px;
+    }
+}
+
+/* ============================================
+   SMALL MOBILE: 376px - 576px
+   ============================================ */
+@media (min-width: 376px) and (max-width: 576px) {
+    .mobile-navbar-header .logo-container img.norga-logo {
+        width: 100px;
+    }
+}
+
+/* ============================================
+   TABLET PORTRAIT: 577px - 768px
+   ============================================ */
+@media (min-width: 577px) and (max-width: 768px) {
+    .mobile-navbar-header {
+        padding: 16px 24px;
+    }
+
+    .mobile-navbar-header .logo-container img.norga-logo {
+        width: 110px;
+    }
+
+    body.mobile-view.sidebar-open .appSidebar {
+        width: 300px !important;
+        min-width: 300px !important;
+    }
+}
+
+/* ============================================
+   TABLET LANDSCAPE: 769px - 992px
+   ============================================ */
+@media (min-width: 769px) and (max-width: 992px) {
+
+    /* Show desktop sidebar, hide mobile header */
+    .mobile-navbar-header {
+        display: none;
+    }
+}
+
+/* ============================================
+   DESKTOP: 993px and up
+   ============================================ */
+@media (min-width: 993px) {
+
+    /* Hide mobile header on desktop */
+    .mobile-navbar-header {
+        display: none;
+    }
+
+    .mobile-sidebar-overlay {
+        display: none !important;
+    }
+}
+
+/* ============================================
+   SIDEBAR MOBILE ADJUSTMENTS
+   ============================================ */
+@media (max-width: 768px) {
+
+    /* Modify sidebar header for mobile */
+    .appSidebar .app-sidebar-header {
+        margin-bottom: 10px;
+    }
+
+    .appSidebar .logoHeader {
+        padding: 20px 16px 16px 16px;
+    }
+
+    /* Adjust menu items for mobile */
+    .appSidebar .appMenu :global(.ant-menu-item) {
+        width: 100%;
+        margin-bottom: 8px;
+    }
+
+    /* User profile section adjustments */
+    .appSidebar .sidebarFooter {
+        padding: 16px;
+    }
+
+    /* Close button for mobile sidebar */
+    .mobile-sidebar-close {
+        position: absolute;
+        top: 17px;
+        right: 9px;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+    }
+
+    .mobile-sidebar-close:hover {
+        background: #F8FAFC;
+        border-radius: 8px;
+    }
+}
+
+/* ============================================
+   UTILITY CLASSES FOR MOBILE
+   ============================================ */
+
+/* Show only on mobile */
+.mobile-only {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .mobile-only {
+        display: flex;
+    }
+}
+
+/* Hide on mobile */
+.mobile-hidden {
+    display: block;
+}
+
+@media (max-width: 768px) {
+    .mobile-hidden {
+        display: none !important;
+    }
+}
+
+/* Flex utilities for mobile */
+@media (max-width: 768px) {
+    .mobile-flex {
+        display: flex !important;
+    }
+
+    .mobile-flex-column {
+        flex-direction: column !important;
+    }
+
+    .mobile-flex-row {
+        flex-direction: row !important;
+    }
+
+    .mobile-justify-between {
+        justify-content: space-between !important;
+    }
+
+    .mobile-align-center {
+        align-items: center !important;
+    }
+}
+
+/* ============================================
+   ANIMATION & TRANSITIONS
+   ============================================ */
+
+/* Smooth transitions for sidebar */
+.appSidebar {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Menu icon animation */
+.menu-icon-button {
+    transition: transform 0.2s ease;
+}
+
+.menu-icon-button:active {
+    transform: scale(0.95);
+}
+
+/* ============================================
+   ACCESSIBILITY
+   ============================================ */
+
+/* Focus states for mobile menu button */
+.mobile-navbar-header .menu-icon-button:focus {
+    outline: 2px solid #2E90FA;
+    outline-offset: 2px;
+}
+
+/* Ensure touch targets are at least 44x44px */
+@media (max-width: 768px) {
+    .mobile-navbar-header .menu-icon-button {
+        min-width: 40px;
+        min-height: 40px;
+    }
+}
+
+/* ============================================
+   LANDSCAPE ORIENTATION
+   ============================================ */
+
+/* Mobile landscape adjustments */
+@media (max-width: 768px) and (orientation: landscape) {
+    .mobile-navbar-header {
+        height: 56px;
+        padding: 12px 20px;
+    }
+
+    body.mobile-view .main-body-wrapper {
+        padding-top: 72px !important;
+    }
+}
+
+/* ============================================
+   SAFE AREA INSETS (iOS Notch Support)
+   ============================================ */
+
+@supports (padding: max(0px)) {
+    @media (max-width: 768px) {
+        .mobile-navbar-header {
+            padding-left: max(20px, env(safe-area-inset-left));
+            padding-right: max(20px, env(safe-area-inset-right));
+            padding-top: max(16px, env(safe-area-inset-top));
+        }
+
+        body.mobile-view.sidebar-open .appSidebar {
+            padding-left: max(0px, env(safe-area-inset-left));
+            padding-bottom: max(0px, env(safe-area-inset-bottom));
+        }
+    }
+}
