@@ -10,6 +10,8 @@ const vehicleRoutes = require('./vehicleRoutes');
 const authRoutes = require('./authRoutes');
 const quoteRoutes = require('./quoteRoutes');
 const postalCodeRoutes = require('./postalCodeRoutes');
+const fortusRoutes = require('./fortusRoutes');
+const productOrderRoutes = require('./productOrderRoutes');
 
 // Mount routes
 router.use('/leads', leadRoutes);
@@ -17,6 +19,8 @@ router.use('/vehicles', vehicleRoutes);
 router.use('/auth', authRoutes);
 router.use('/quote', quoteRoutes);
 router.use('/postal-codes', postalCodeRoutes);
+router.use('/fortus', fortusRoutes);
+router.use('/product-order', productOrderRoutes);
 
 // Health check endpoint
 router.get('/health', (req, res) => {

@@ -74,6 +74,31 @@ const lmsGet = async (endpoint, tokenPayload, queryParams = {}) => {
 };
 
 /**
+ * Make an authenticated POST request to LMS API
+ * @param {string} endpoint - API endpoint (e.g., '/fortus/request-call')
+ * @param {Object} tokenPayload - Data to include in the auth token
+ * @param {Object} body - Request body
+ * @returns {Promise<Object>} API response
+ */
+const lmsPost = async (endpoint, tokenPayload, body = {}) => {
+  const token = generateCrossAppToken(tokenPayload);
+  
+  const url = `${LMS_API_URL}/api/crossapp${endpoint}`;
+  
+  console.log('[LmsApiService] Making POST request to:', url);
+
+  const response = await axios.post(url, body, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    timeout: 30000 // Longer timeout for processing requests
+  });
+
+  return response.data;
+};
+
+/**
  * Fetch lead products from LMS
  * 
  * Replaces: lmsDB.leadProducts.find({ leadId })
@@ -267,6 +292,8 @@ const getLeadQuotes = async (leadId, options = {}) => {
 
 module.exports = {
   generateCrossAppToken,
+  lmsGet,
+  lmsPost,
   getLeadProducts,
   getQuoteById,
   getQuoteByLeadId,
