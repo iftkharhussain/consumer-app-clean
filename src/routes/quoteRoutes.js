@@ -205,4 +205,29 @@ router.get('/poll/:quoteId', quoteController.pollQuoteStatus);
  */
 router.get('/by-lead/:leadId', quoteController.getQuotesByLead);
 
+// ============================================
+// RECALCULATE QUOTE (TEMPORARY - NO DB SAVE)
+// ============================================
+
+/**
+ * POST /api/quote/recalculate
+ * Request a recalculated quote with modified coverages
+ * 
+ * Used when user modifies protection settings in the customize page.
+ * Returns temporary quote data - NOT saved to database.
+ * Quote only gets persisted when user clicks "Demander un appel".
+ * 
+ * Body: {
+ *   userProductId: string,           // Required - user product ID
+ *   protections: {                   // Modified protection settings
+ *     responsabilite: { included: boolean, amount: number },
+ *     collision: { included: boolean, amount: number, vehicleToggles: boolean[] },
+ *     accidents: { included: boolean, amount: number, vehicleToggles: boolean[] },
+ *     bonifiee: { included: boolean, vehicleToggles: boolean[] },
+ *     assistance: { included: boolean, vehicleToggles: boolean[] }
+ *   }
+ * }
+ */
+router.post('/recalculate', quoteController.recalculateQuote);
+
 module.exports = router;

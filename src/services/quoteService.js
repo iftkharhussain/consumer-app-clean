@@ -360,12 +360,100 @@ const checkQuoteStatus = async ({ appLeadId, productId }) => {
   }
 };
 
+/**
+ * Request a recalculated quote with modified coverage settings
+ * 
+ * Used when user modifies protection settings in the customize page.
+ * Returns temporary quote data - NOT saved to database.
+ * 
+ * @param {Object} params
+ * @param {string} params.leadId - The lead ID (appLeadId / all_leads._id)
+ * @param {Object} params.coverageModifications - Modified coverage settings from frontend
+ * @param {string[]} params.insurers - Optional - insurer names (defaults to enabled)
+ * @param {string} params.environment - 'test' or 'production' (defaults from env)
+ * @returns {Promise<Object>} Temporary quote response
+ */
+const recalculateQuote = async ({
+  leadId,
+  coverageModifications,
+  insurers = carrierConfig.getEnabledInsurerGroups(),
+  environment = carrierConfig.getDefaultEnvironment()
+}) => {
+  try {
+    if (!leadId) {
+      return { success: false, message: 'leadId is required' };
+    }
+
+    if (!coverageModifications) {
+      return { success: false, message: 'coverageModifications is required' };
+    }
+
+    // Generate cross-app token
+    const token = generateCrossAppToken({
+      appLeadId: leadId
+    });
+
+    logger.info('QuoteService.recalculateQuote', {
+      leadId,
+      insurers,
+      environment,
+      hasModifications: !!coverageModifications
+    });
+
+    // Call LMS recalculate endpoint
+    const response = await axios.post(
+      `${LMS_API_URL}/api/crossapp/quote-recalculate`,
+      {
+        leadId,
+        coverageModifications,
+        insurers,
+        environment
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        timeout: 120000 // 2 minutes - recalculation can take time
+      }
+    );
+
+    logger.info('QuoteService.recalculateQuote - Response', {
+      success: response.data.success,
+      carriersCount: response.data.carriers?.length || 0,
+      isTemporary: response.data.isTemporary
+    });
+
+    return {
+      success: response.data.success,
+      message: response.data.message,
+      isTemporary: response.data.isTemporary,
+      carriers: response.data.carriers || [],
+      coverageModifications: response.data.coverageModifications,
+      processingTime: response.data.processingTime,
+      errors: response.data.errors
+    };
+
+  } catch (error) {
+    logger.error('QuoteService.recalculateQuote error', {
+      message: error.message,
+      response: error.response?.data
+    });
+
+    return {
+      success: false,
+      message: error.response?.data?.message || error.message || 'Failed to recalculate quote'
+    };
+  }
+};
+
 module.exports = {
   requestQuote,
   requestQuoteDirect,
   checkQuoteStatus,
   checkQuoteStatusById,
   getQuotesByLead,
+  recalculateQuote,
   generateCrossAppToken,
   getSupportedCarriers,
   SUPPORTED_ENVIRONMENTS

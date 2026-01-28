@@ -89,6 +89,7 @@ const userProductSchema = new mongoose.Schema({
     content: mongoose.Schema.Types.Mixed, // Can be string or object (JSON)
     isVisited: Boolean,
     lmsStatus: String,
+    quoteData: mongoose.Schema.Types.Mixed, // Quote data cached from LMS
   },
 }, {
   timestamps: true,

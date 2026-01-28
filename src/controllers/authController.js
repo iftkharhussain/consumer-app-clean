@@ -170,9 +170,10 @@ async function syncLeadProducts(userId, leadId) {
         }
         
         existingProduct.lmsMetadata = {
+          ...existingProduct.lmsMetadata, // Preserve existing data like quoteData
           content: lp.content,
           isVisited: lp.isVisited,
-          lmsStatus: lp.status,
+          lmsStatus: lp.status
         };
         await existingProduct.save();
         syncedProducts.push(existingProduct);
@@ -194,7 +195,8 @@ async function syncLeadProducts(userId, leadId) {
           lmsMetadata: {
             content: lp.content,
             isVisited: lp.isVisited,
-            lmsStatus: lp.status,
+            lmsStatus: lp.status
+            // quoteData will be added later by pollQuoteStatus when quote completes
           },
         });
         

@@ -25,25 +25,38 @@ const logger = require('../utils/logger');
  * - Fortus integration is active for the advisor
  * 
  * @param {string} leadId - The lead ID from all_leads collection
+ * @param {Object} recalculatedQuote - Optional temporary quote to save when user accepts
  * @returns {Promise<Object>} { success, message, data }
  */
-const requestCall = async (leadId) => {
+const requestCall = async (leadId, recalculatedQuote = null) => {
   try {
     if (!leadId) {
       throw new Error('leadId is required');
     }
 
-    logger.info('FortusService.requestCall', { leadId });
+    logger.info('FortusService.requestCall', { 
+      leadId,
+      hasRecalculatedQuote: !!recalculatedQuote 
+    });
 
-    const result = await lmsPost('/fortus/request-call', {
+    // Build request body - include recalculatedQuote if provided
+    const requestBody = {
       appLeadId: leadId
-    }, {
+    };
+    
+    // If recalculatedQuote is provided, include it so LMS can save it
+    if (recalculatedQuote) {
+      requestBody.recalculatedQuote = recalculatedQuote;
+    }
+
+    const result = await lmsPost('/fortus/request-call', requestBody, {
       leadId
     });
 
     logger.info('FortusService.requestCall success', { 
       leadId, 
-      fortusLeadId: result.data?.fortusLeadId 
+      fortusLeadId: result.data?.fortusLeadId,
+      quoteSaved: result.data?.quoteSaved || false
     });
 
     return {

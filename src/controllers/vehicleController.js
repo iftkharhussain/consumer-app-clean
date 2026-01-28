@@ -4,7 +4,122 @@
  */
 
 const vehicleService = require('../services/vehicleService');
+const UserProduct = require('../schema/UserProduct');
+const logger = require('../utils/logger');
 const { successResponse, errorResponse } = require('../utils/response');
+
+/**
+ * Get vehicles for a user's product
+ * Also fetches current coverages from LMS quote data
+ * Used to display real vehicle data and pre-populate customize protections page
+ * 
+ * GET /api/vehicles/user
+ * Query: { productSlug: string } or { userProductId: string }
+ */
+const getUserVehicles = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { productSlug, userProductId } = req.query;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    // Find the user product
+    let userProduct;
+
+    if (userProductId) {
+      userProduct = await UserProduct.findOne({
+        _id: userProductId,
+        userId,
+        status: 'active'
+      });
+    } else if (productSlug) {
+      userProduct = await UserProduct.findByUserAndSlug(userId, productSlug);
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Either productSlug or userProductId is required'
+      });
+    }
+
+    if (!userProduct) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found for this user'
+      });
+    }
+
+    // Extract vehicles from lmsMetadata.content.cars
+    const cars = userProduct.lmsMetadata?.content?.cars || [];
+    
+    // Transform to frontend format
+    const vehicles = cars.map((car, index) => {
+      const details = car.vehicleDetails || {};
+      const year = car.year || details.year || '';
+      const make = car.manufacturer || details.make || '';
+      const model = details.modelFr || details.model || '';
+      
+      return {
+        id: index,
+        name: `${make} ${model}, ${year}`.trim(),
+        year,
+        make,
+        model,
+        details: car
+      };
+    });
+
+    // Get quote data from lmsMetadata (already synced during login)
+    const quoteData = userProduct.lmsMetadata?.quoteData;
+    let coverages = null;
+    let quoteCarriers = null;
+    
+    if (quoteData) {
+      coverages = quoteData.coverages;
+      quoteCarriers = quoteData.carriers;
+      
+      logger.info('VehicleController.getUserVehicles - using cached quote data', {
+        quoteId: quoteData.quoteId,
+        hasCoverages: !!coverages,
+        carriersCount: quoteCarriers?.length || 0
+      });
+    } else {
+      logger.info('VehicleController.getUserVehicles - no quote data in metadata', {
+        userProductId: userProduct._id
+      });
+    }
+
+    logger.info('VehicleController.getUserVehicles', {
+      userId,
+      userProductId: userProduct._id,
+      vehicleCount: vehicles.length,
+      hasCoverages: !!coverages
+    });
+
+    return res.json({
+      success: true,
+      vehicles,
+      count: vehicles.length,
+      coverages, // null if no quote found
+      carriers: quoteCarriers // Include carriers for reference
+    });
+
+  } catch (error) {
+    logger.error('VehicleController.getUserVehicles error', {
+      message: error.message,
+      stack: error.stack
+    });
+
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch vehicles'
+    });
+  }
+};
 
 /**
  * Get vehicle data loading status
@@ -116,6 +231,7 @@ const searchVehicles = async (req, res) => {
 };
 
 module.exports = {
+  getUserVehicles,
   getStatus,
   getYears,
   getMakes,

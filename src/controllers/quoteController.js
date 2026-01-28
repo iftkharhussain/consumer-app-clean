@@ -228,6 +228,9 @@ const getQuoteStatus = async (req, res) => {
  * This is the primary endpoint for frontend polling.
  * Call this every 5 seconds after requesting a quote.
  * 
+ * Optimization: If quote data already exists in consumer DB and is complete,
+ * serve from cache instead of calling LMS API.
+ * 
  * Returns:
  * - status: 'pending' | 'processing' | 'success' | 'failed' | 'timeout'
  * - When status is 'success', includes full quote data with carriers
@@ -253,9 +256,50 @@ const pollQuoteStatus = async (req, res) => {
       const user = await User.findById(userId);
       appLeadId = user?.leadSystemInfo?.leadId?.toString();
       console.log('[pollQuoteStatus] Got appLeadId from user', { appLeadId });
+      
+      // Check if we already have complete quote data in consumer DB
+      if (appLeadId) {
+        const userProduct = await UserProduct.findOne({
+          leadId: appLeadId,
+          status: 'active',
+          'lmsMetadata.quoteData.quoteId': quoteId
+        });
+        
+        if (userProduct && userProduct.lmsMetadata?.quoteData) {
+          const cachedQuote = userProduct.lmsMetadata.quoteData;
+          const isComplete = ['success', 'failed', 'timeout'].includes(cachedQuote.status);
+          
+          // If we have complete quote data cached, return it immediately
+          if (isComplete) {
+            console.log('[pollQuoteStatus] Serving from cache', {
+              quoteId,
+              status: cachedQuote.status,
+              carriersCount: cachedQuote.carriers?.length || 0
+            });
+            
+            return res.status(200).json({
+              success: true,
+              quoteId: cachedQuote.quoteId,
+              leadId: appLeadId,
+              status: cachedQuote.status,
+              isComplete: true,
+              fromCache: true, // Indicator that this came from cache
+              ...(cachedQuote.status === 'success' && {
+                carriers: cachedQuote.carriers || [],
+                carriersCount: cachedQuote.carriers?.length || 0
+              }),
+              ...(cachedQuote.status === 'failed' && {
+                error: cachedQuote.error || 'Quote request failed'
+              }),
+              createdAt: cachedQuote.createdAt,
+              updatedAt: cachedQuote.updatedAt
+            });
+          }
+        }
+      }
     }
 
-    console.log('[pollQuoteStatus] Calling quoteService.checkQuoteStatusById', { quoteId, appLeadId });
+    console.log('[pollQuoteStatus] No cache found, calling LMS API', { quoteId, appLeadId });
 
     // Call LMS to get current quote status - pass object with both IDs
     const result = await quoteService.checkQuoteStatusById({ quoteId, appLeadId });
@@ -280,19 +324,64 @@ const pollQuoteStatus = async (req, res) => {
 
     console.log('[pollQuoteStatus] Quote status:', { status: quote.status, isComplete });
 
-    // If quote is complete and we have leadId, update local status
+    // If quote is complete and we have leadId, update local status AND save quote data
     if (isComplete && quote.leadId) {
       try {
         const userProduct = await UserProduct.findOne({ 
           leadId: quote.leadId,
           status: 'active'
         });
+        
         if (userProduct) {
           const newStatus = quote.status === 'success' ? 'success' : 'failed';
           await userProduct.updateQuoteStatus(
             newStatus, 
             quote.status === 'failed' ? 'Quote request failed' : null
           );
+          
+          // Save quote data to lmsMetadata for future use
+          if (quote.status === 'success') {
+            const quoteData = {
+              quoteId: quote._id || quoteId,
+              status: quote.status,
+              carriers: quote.carriers || [],
+              coverages: null,
+              createdAt: quote.createdAt,
+              updatedAt: quote.updatedAt
+            };
+            
+            // Extract coverages from first successful carrier
+            const firstCarrier = quote.carriers?.find(c => c.status === 'success');
+            if (firstCarrier && firstCarrier.coverages) {
+              quoteData.coverages = firstCarrier.coverages;
+            }
+            
+            // Update lmsMetadata with quote data - properly handle nested object
+            if (!userProduct.lmsMetadata) {
+              userProduct.lmsMetadata = {};
+            }
+            
+            // Convert to plain object if it's a Mongoose document
+            const existingMetadata = userProduct.lmsMetadata.toObject ? 
+              userProduct.lmsMetadata.toObject() : userProduct.lmsMetadata;
+            
+            userProduct.lmsMetadata = {
+              ...existingMetadata,
+              quoteData
+            };
+            
+            // Mark as modified for Mongoose to detect change
+            userProduct.markModified('lmsMetadata');
+            
+            await userProduct.save();
+            
+            console.log('[pollQuoteStatus] Saved quote data to user_products', {
+              userProductId: userProduct._id,
+              quoteId: quoteData.quoteId,
+              hasCoverages: !!quoteData.coverages,
+              carriersCount: quoteData.carriers.length
+            });
+          }
         }
       } catch (updateError) {
         logger.warn('Failed to update userProduct status during poll', {
@@ -1215,6 +1304,103 @@ const fetchQuoteById = async (req, res) => {
   }
 };
 
+/**
+ * Recalculate quote with modified coverage settings
+ * 
+ * POST /api/quote/recalculate
+ * Body: { userProductId: string, protections: {...} }
+ * 
+ * Returns temporary quote data - NOT saved to database.
+ * Quote only gets persisted when user clicks "Demander un appel".
+ */
+const recalculateQuote = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { userProductId, protections } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    if (!userProductId) {
+      return res.status(400).json({
+        success: false,
+        message: 'userProductId is required'
+      });
+    }
+
+    if (!protections) {
+      return res.status(400).json({
+        success: false,
+        message: 'protections object is required'
+      });
+    }
+
+    // Find the user product
+    const userProduct = await UserProduct.findOne({
+      _id: userProductId,
+      userId,
+      status: 'active'
+    });
+
+    if (!userProduct) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found for this user'
+      });
+    }
+
+    logger.info('Recalculating quote with modified protections', {
+      userProductId,
+      leadId: userProduct.leadId,
+      hasProtections: !!protections
+    });
+
+    // Call LMS to recalculate quote
+    const result = await quoteService.recalculateQuote({
+      leadId: userProduct.leadId.toString(),
+      coverageModifications: protections
+    });
+
+    if (result.success) {
+      return res.status(200).json({
+        success: true,
+        message: result.message || 'Quote recalculated (temporary)',
+        isTemporary: true,
+        userProductId: userProduct._id,
+        quote: {
+          carriers: result.carriers,
+          carriersCount: result.carriers?.length || 0,
+          processingTime: result.processingTime,
+          coverageModifications: result.coverageModifications
+        },
+        errors: result.errors
+      });
+    } else {
+      return res.status(200).json({
+        success: false,
+        message: result.message || 'Failed to recalculate quote',
+        userProductId: userProduct._id,
+        error: result.message
+      });
+    }
+
+  } catch (error) {
+    logger.error('QuoteController.recalculateQuote error', {
+      message: error.message,
+      stack: error.stack
+    });
+
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred while recalculating quote'
+    });
+  }
+};
+
 module.exports = {
   requestQuote,
   requestQuoteDirect,
@@ -1226,5 +1412,7 @@ module.exports = {
   fetchQuoteById,
   // Async polling endpoints
   pollQuoteStatus,
-  getQuotesByLead
+  getQuotesByLead,
+  // Recalculate quote
+  recalculateQuote
 };
