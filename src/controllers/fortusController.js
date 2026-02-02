@@ -29,7 +29,7 @@ const logger = require('../utils/logger');
 const requestCall = async (req, res) => {
   try {
     const userId = req.userId;
-    const { userProductId, productSlug, selectedQuote, recalculatedQuote } = req.body;
+    const { userProductId, productSlug, selectedQuote, recalculatedQuote, carrierCode } = req.body;
 
     if (!userId) {
       return res.status(401).json({
@@ -74,12 +74,14 @@ const requestCall = async (req, res) => {
       userId,
       userProductId: userProduct._id,
       leadId: userProduct.leadId,
-      hasRecalculatedQuote: !!recalculatedQuote
+      hasRecalculatedQuote: !!recalculatedQuote,
+      carrierCode: carrierCode || 'not specified'
     });
 
     // Call Fortus service to send the lead
     // If recalculatedQuote is provided, it will be saved to quote_records in LMS
-    const result = await fortusService.requestCall(userProduct.leadId, recalculatedQuote);
+    // Pass carrierCode to filter the correct quote in LMS
+    const result = await fortusService.requestCall(userProduct.leadId, recalculatedQuote, carrierCode);
 
     if (!result.success) {
       logger.warn('FortusController.requestCall failed', {

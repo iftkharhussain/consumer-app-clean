@@ -26,9 +26,10 @@ const logger = require('../utils/logger');
  * 
  * @param {string} leadId - The lead ID from all_leads collection
  * @param {Object} recalculatedQuote - Optional temporary quote to save when user accepts
+ * @param {string} carrierCode - Optional carrier code to filter the correct quote (e.g., 'UNI', 'GC', 'PAFM')
  * @returns {Promise<Object>} { success, message, data }
  */
-const requestCall = async (leadId, recalculatedQuote = null) => {
+const requestCall = async (leadId, recalculatedQuote = null, carrierCode = null) => {
   try {
     if (!leadId) {
       throw new Error('leadId is required');
@@ -36,7 +37,8 @@ const requestCall = async (leadId, recalculatedQuote = null) => {
 
     logger.info('FortusService.requestCall', { 
       leadId,
-      hasRecalculatedQuote: !!recalculatedQuote 
+      hasRecalculatedQuote: !!recalculatedQuote,
+      carrierCode: carrierCode || 'not specified'
     });
 
     // Build request body - include recalculatedQuote if provided
@@ -48,9 +50,15 @@ const requestCall = async (leadId, recalculatedQuote = null) => {
     if (recalculatedQuote) {
       requestBody.recalculatedQuote = recalculatedQuote;
     }
+    
+    // If carrierCode is provided, include it so LMS can filter the correct quote
+    if (carrierCode) {
+      requestBody.carrierCode = carrierCode;
+    }
 
     const result = await lmsPost('/fortus/request-call', requestBody, {
-      leadId
+      leadId,
+      carrierCode
     });
 
     logger.info('FortusService.requestCall success', { 

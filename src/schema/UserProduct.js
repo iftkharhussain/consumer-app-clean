@@ -26,6 +26,13 @@ const userProductSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     required: true,
     index: true,
+    comment: 'Internal leads._id from LMS'
+  },
+  appLeadId: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: false,
+    index: true,
+    comment: 'all_leads._id from LMS - used for quote queries'
   },
   leadProductId: {
     type: mongoose.Schema.Types.ObjectId,

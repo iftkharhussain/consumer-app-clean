@@ -161,6 +161,11 @@ async function syncLeadProducts(userId, leadId) {
         // Update if exists - also update slug/name if they were missing
         existingProduct.userId = userId;
         
+        // Update appLeadId if provided (new field)
+        if (lp.appLeadId) {
+          existingProduct.appLeadId = new mongoose.Types.ObjectId(lp.appLeadId);
+        }
+        
         // Fix missing slug/name from previous buggy syncs
         if (!existingProduct.productSlug && product?.slug) {
           existingProduct.productSlug = product.slug;
@@ -185,7 +190,8 @@ async function syncLeadProducts(userId, leadId) {
         
         const userProduct = new UserProduct({
           userId,
-          leadId: leadObjectId,
+          leadId: lp.leadId ? new mongoose.Types.ObjectId(lp.leadId) : leadObjectId,
+          appLeadId: lp.appLeadId ? new mongoose.Types.ObjectId(lp.appLeadId) : leadObjectId,
           leadProductId: lp._id,
           productId: product?._id || lp.productId,
           productSlug,
