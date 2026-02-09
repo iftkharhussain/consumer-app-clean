@@ -42,6 +42,12 @@ class PostalCodeService {
         return null;
       }
 
+      const fsa = postalCode.substring(0, 1).toUpperCase();
+      // Check if postal code is in Quebec (G, H, J, K prefixes)
+      if (!['G', 'H', 'J', 'K'].includes(fsa)) {
+        return { error: 'out_of_coverage', message: 'This postal code is outside our service area. We currently only support Quebec postal codes.' };
+      }
+
       // Try exact match first
       let result = await PostalCode.findOne(
         { postalCode: postalCode },
@@ -58,6 +64,8 @@ class PostalCodeService {
         
         if (result) {
           logger.info(`Location index found using FSA summary: ${fsa} -> ${result.gcpcid}`);
+        } else {
+          console.log('[POSTAL CODE] ❌ No result found for FSA:', fsa);
         }
       } else {
         logger.info(`Location index found: ${postalCode} -> ${result.gcpcid}`);

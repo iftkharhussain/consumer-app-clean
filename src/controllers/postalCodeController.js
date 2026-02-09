@@ -23,6 +23,11 @@ const getLocationIndex = async (req, res) => {
       return errorResponse(res, 'Postal code not found', 404);
     }
 
+    // Check if result indicates out of coverage
+    if (result.error === 'out_of_coverage') {
+      return errorResponse(res, result.message, 400);
+    }
+
     return successResponse(res, result, 'Location index retrieved successfully');
   } catch (error) {
     console.error('Get location index error:', error);
