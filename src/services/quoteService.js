@@ -91,7 +91,7 @@ const requestQuoteDirect = async ({
 
     // Generate cross-app token
     const token = generateCrossAppToken({
-      appLeadId: leadId
+      appLeadId: leadId  // Token field: leadId here is all_leads._id from consumer session
     });
     
     logger.info('QuoteService.requestQuoteDirect', {
@@ -193,10 +193,10 @@ const requestQuote = async ({ leadId, productId, leadProductId, userProductId })
  * 
  * @param {Object} params
  * @param {string} params.quoteId - The quote record ID returned from requestQuoteDirect
- * @param {string} params.appLeadId - The app lead ID (for token)
+ * @param {string} params.allLeadsId - The all_leads._id (for token)
  * @returns {Promise<Object>} Quote status with carriers when ready
  */
-const checkQuoteStatusById = async ({ quoteId, appLeadId }) => {
+const checkQuoteStatusById = async ({ quoteId, allLeadsId }) => {
   try {
     if (!quoteId) {
       return { success: false, message: 'quoteId is required' };
@@ -204,7 +204,7 @@ const checkQuoteStatusById = async ({ quoteId, appLeadId }) => {
 
     // Generate cross-app token
     const token = generateCrossAppToken({
-      appLeadId
+      appLeadId: allLeadsId  // Token field: all_leads._id
     });
     
     // Call LMS quote status endpoint with quoteId
@@ -222,8 +222,8 @@ const checkQuoteStatusById = async ({ quoteId, appLeadId }) => {
     return {
       success: response.data.success,
       quoteId: response.data.quoteId,
-      leadId: response.data.leadId,       // Include leadId for frontend
-      appLeadId: response.data.appLeadId, // Include appLeadId for reference
+      leadId: response.data.leadId,       // leads._id from LMS
+      appLeadId: response.data.appLeadId, // all_leads._id from LMS
       status: response.data.status,  // pending, processing, success, failed, timeout
       carriers: response.data.carriers,
       createdAt: response.data.createdAt,
@@ -261,10 +261,10 @@ const checkQuoteStatusById = async ({ quoteId, appLeadId }) => {
  * 
  * @param {Object} params
  * @param {string} params.leadId - The lead ID
- * @param {string} params.appLeadId - The app lead ID (for token)
+ * @param {string} params.allLeadsId - The all_leads._id (for token)
  * @returns {Promise<Object>} List of quotes
  */
-const getQuotesByLead = async ({ leadId, appLeadId }) => {
+const getQuotesByLead = async ({ leadId, allLeadsId }) => {
   try {
     if (!leadId) {
       return { success: false, message: 'leadId is required' };
@@ -272,7 +272,7 @@ const getQuotesByLead = async ({ leadId, appLeadId }) => {
 
     // Generate cross-app token
     const token = generateCrossAppToken({
-      appLeadId: appLeadId || leadId
+      appLeadId: allLeadsId || leadId  // Token field: all_leads._id
     });
     
     // Call LMS endpoint
@@ -309,18 +309,18 @@ const getQuotesByLead = async ({ leadId, appLeadId }) => {
 };
 
 /**
- * Check quote status from LMS (legacy - by appLeadId)
+ * Check quote status from LMS (legacy - by allLeadsId)
  * 
  * @param {Object} params
- * @param {string} params.appLeadId - The leads collection ID
+ * @param {string} params.allLeadsId - The all_leads._id
  * @param {string} params.productId - The product ID (optional)
  * @returns {Promise<Object>} Quote status
  */
-const checkQuoteStatus = async ({ appLeadId, productId }) => {
+const checkQuoteStatus = async ({ allLeadsId, productId }) => {
   try {
     // Generate cross-app token
     const token = generateCrossAppToken({
-      appLeadId,
+      appLeadId: allLeadsId,  // Token field: all_leads._id
       productId
     });
     
@@ -390,7 +390,7 @@ const recalculateQuote = async ({
 
     // Generate cross-app token
     const token = generateCrossAppToken({
-      appLeadId: leadId
+      appLeadId: leadId  // Token field: leadId here is all_leads._id from consumer session
     });
 
     logger.info('QuoteService.recalculateQuote', {

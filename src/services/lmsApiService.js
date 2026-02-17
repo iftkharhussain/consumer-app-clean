@@ -115,7 +115,7 @@ const getLeadProducts = async (leadId) => {
     logger.info('LmsApiService.getLeadProducts', { leadId });
 
     const result = await lmsGet(`/leads/${leadId}/products`, {
-      appLeadId: leadId
+      appLeadId: leadId  // Token field: leadId here is all_leads._id from consumer session
     });
 
     return {
@@ -158,7 +158,7 @@ const getQuoteById = async (quoteId, leadId) => {
     logger.info('LmsApiService.getQuoteById', { quoteId, leadId });
 
     const result = await lmsGet(`/quotes/${quoteId}`, {
-      appLeadId: leadId
+      appLeadId: leadId  // Token field: leadId here is all_leads._id
     });
 
     return {
@@ -214,7 +214,7 @@ const getQuoteByLeadId = async (leadId, productId = null) => {
     }
 
     const result = await lmsGet(`/quotes/${leadId}`, {
-      appLeadId: leadId
+      appLeadId: leadId  // Token field: leadId here is all_leads._id
     }, queryParams);
 
     return {
@@ -265,7 +265,7 @@ const getLeadQuotes = async (leadId, options = {}) => {
     logger.info('LmsApiService.getLeadQuotes', { leadId, limit, skip, productId });
 
     const result = await lmsGet(`/leads/${leadId}/quotes`, {
-      appLeadId: leadId
+      appLeadId: leadId  // Token field: leadId here is all_leads._id
     }, { limit, skip, productId });
 
     return {

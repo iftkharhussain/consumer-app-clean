@@ -87,17 +87,19 @@ const requestQuote = async (req, res) => {
 
     logger.info('Requesting quote from LMS', {
       userProductId: userProduct._id,
-      leadId: userProduct.leadId,
+      leadId: userProduct.leadId,        // leads._id (internal)
+      appLeadId: userProduct.appLeadId,  // all_leads._id (external)
       productId: userProduct.productId,
       leadProductId: userProduct.leadProductId
     });
 
     // Request quote from LMS using simplified direct flow
+    // Use appLeadId (all_leads._id) - this is the external-facing ID
     // Use enabled carriers from config (ENABLED_CARRIERS env var)
     // NOTE: LMS now returns immediately with quoteId (async pattern)
     // Frontend should poll for status using checkQuoteStatus endpoint
     const result = await quoteService.requestQuoteDirect({
-      leadId: userProduct.leadId.toString(),
+      leadId: userProduct.appLeadId.toString(),  // USE all_leads._id
       carriers: carrierConfig.getEnabledCarrierCodes(),
       environment: carrierConfig.getDefaultEnvironment(),
       quoteType: 'auto'
@@ -250,17 +252,17 @@ const pollQuoteStatus = async (req, res) => {
     }
 
     // Get user's leadId for token generation
-    let appLeadId = null;
+    let allLeadsId = null;  // all_leads._id from user session
     if (userId) {
       const User = require('../schema/User');
       const user = await User.findById(userId);
-      appLeadId = user?.leadSystemInfo?.leadId?.toString();
-      console.log('[pollQuoteStatus] Got appLeadId from user', { appLeadId });
+      allLeadsId = user?.leadSystemInfo?.leadId?.toString();
+      console.log('[pollQuoteStatus] Got allLeadsId from user', { allLeadsId });
       
       // Check if we already have complete quote data in consumer DB
-      if (appLeadId) {
+      if (allLeadsId) {
         const userProduct = await UserProduct.findOne({
-          leadId: appLeadId,
+          leadId: allLeadsId,  // all_leads._id
           status: 'active',
           'lmsMetadata.quoteData.quoteId': quoteId
         });
@@ -280,7 +282,7 @@ const pollQuoteStatus = async (req, res) => {
             return res.status(200).json({
               success: true,
               quoteId: cachedQuote.quoteId,
-              leadId: appLeadId,
+              leadId: allLeadsId,  // all_leads._id
               status: cachedQuote.status,
               isComplete: true,
               fromCache: true, // Indicator that this came from cache
@@ -299,10 +301,10 @@ const pollQuoteStatus = async (req, res) => {
       }
     }
 
-    console.log('[pollQuoteStatus] No cache found, calling LMS API', { quoteId, appLeadId });
+    console.log('[pollQuoteStatus] No cache found, calling LMS API', { quoteId, allLeadsId });
 
     // Call LMS to get current quote status - pass object with both IDs
-    const result = await quoteService.checkQuoteStatusById({ quoteId, appLeadId });
+    const result = await quoteService.checkQuoteStatusById({ quoteId, allLeadsId });
 
     console.log('[pollQuoteStatus] Result from LMS:', { 
       success: result.success, 
@@ -512,9 +514,9 @@ const getQuoteDetails = async (req, res) => {
       });
     }
 
-    // Fetch quote record from LMS API (replaces direct DB access)
+    // Fetch quote record from LMS API using appLeadId (all_leads._id)
     const result = await lmsApiService.getQuoteByLeadId(
-      userProduct.leadId.toString(),
+      userProduct.appLeadId.toString(),  // Use all_leads._id
       userProduct.productId?.toString()
     );
 
@@ -680,7 +682,8 @@ const fetchQuote = async (req, res) => {
 
     logger.info('Found user product', {
       userProductId: userProduct._id,
-      leadId: userProduct.leadId,
+      leadId: userProduct.leadId,        // leads._id (internal)
+      appLeadId: userProduct.appLeadId,  // all_leads._id (external)
       productId: userProduct.productId,
       quoteStatus: userProduct.quoteStatus,
       requestId
@@ -728,11 +731,9 @@ const fetchQuote = async (req, res) => {
 
     // If quote already exists and is successful, fetch and return details
     if (userProduct.quoteStatus === 'success') {
-      // Get quote details from LMS API (replaces direct DB access)
-      // Don't filter by productId since simplified flow doesn't set it
+      // Get quote details from LMS API using appLeadId (all_leads._id)
       const result = await lmsApiService.getQuoteByLeadId(
-        userProduct.leadId.toString()
-        // Note: Not passing productId - simplified flow doesn't require it
+        userProduct.appLeadId.toString()  // Use all_leads._id for quote lookup
       );
 
       if (result.success && result.quote) {
@@ -801,10 +802,10 @@ const fetchQuote = async (req, res) => {
     });
 
     // Request quote from LMS using simplified direct flow
-    // Use enabled carriers from config (ENABLED_CARRIERS env var)
+    // Use appLeadId (all_leads._id) - this is the external-facing ID
     // LMS returns immediately with quoteId for async polling
     const result = await quoteService.requestQuoteDirect({
-      leadId: userProduct.leadId.toString(),
+      leadId: userProduct.appLeadId.toString(),  // USE all_leads._id
       carriers: carrierConfig.getEnabledCarrierCodes(),
       environment: carrierConfig.getDefaultEnvironment(),
       quoteType: 'auto'
@@ -841,7 +842,7 @@ const fetchQuote = async (req, res) => {
           status: quoteStatus,
           quoteId: result.quoteId,
           userProductId: userProduct._id,
-          leadId: userProduct.leadId.toString(),
+          leadId: userProduct.appLeadId.toString(),  // Return all_leads._id to frontend
           // Polling hints for frontend
           pollInterval: 5000,  // 5 seconds
           maxPollTime: 300000  // 5 minutes
@@ -852,9 +853,9 @@ const fetchQuote = async (req, res) => {
       if (quoteStatus === 'success') {
         await userProduct.updateQuoteStatus('success');
         
-        // Fetch quote details via API
+        // Fetch quote details via API using appLeadId
         const quoteResult = await lmsApiService.getQuoteByLeadId(
-          userProduct.leadId.toString()
+          userProduct.appLeadId.toString()  // Use all_leads._id
         );
 
         const quoteRecord = quoteResult.success ? quoteResult.quote : null;
@@ -883,15 +884,13 @@ const fetchQuote = async (req, res) => {
       await userProduct.updateQuoteStatus('success');
       logger.info('Quote successful, fetching quote record via API', {
         userProductId: userProduct._id,
-        leadId: userProduct.leadId,
+        appLeadId: userProduct.appLeadId,  // all_leads._id
         requestId
       });
 
-      // Fetch the quote details from LMS API (replaces direct DB access)
-      // Don't filter by productId since simplified flow doesn't set it
+      // Fetch the quote details from LMS API using appLeadId (all_leads._id)
       const quoteResult = await lmsApiService.getQuoteByLeadId(
-        userProduct.leadId.toString()
-        // Note: Not passing productId - simplified flow doesn't require it
+        userProduct.appLeadId.toString()  // Use all_leads._id
       );
 
       const quoteRecord = quoteResult.success ? quoteResult.quote : null;
@@ -1173,7 +1172,8 @@ const fetchQuoteById = async (req, res) => {
 
     logger.info('Found user product by ID', {
       userProductId: userProduct._id,
-      leadId: userProduct.leadId,
+      leadId: userProduct.leadId,        // leads._id (internal)
+      appLeadId: userProduct.appLeadId,  // all_leads._id (external)
       productSlug: userProduct.productSlug,
       quoteStatus: userProduct.quoteStatus,
       requestId
@@ -1181,9 +1181,9 @@ const fetchQuoteById = async (req, res) => {
 
     // Check if quote already exists
     if (userProduct.quoteStatus === 'success') {
-      // Fetch existing quote from LMS
+      // Fetch existing quote from LMS using appLeadId (all_leads._id)
       const quoteResult = await lmsApiService.getQuoteByLeadId(
-        userProduct.leadId.toString()
+        userProduct.appLeadId.toString()  // Use all_leads._id
       );
 
       const quoteRecord = quoteResult.success ? quoteResult.quote : null;
@@ -1247,9 +1247,10 @@ const fetchQuoteById = async (req, res) => {
     }
 
     // Request quote from LMS
+    // Use appLeadId (all_leads._id) - this is the external-facing ID
     // Use enabled carriers from config (ENABLED_CARRIERS env var)
     const result = await quoteService.requestQuoteDirect({
-      leadId: userProduct.leadId.toString(),
+      leadId: userProduct.appLeadId.toString(),  // USE all_leads._id
       carriers: carrierConfig.getEnabledCarrierCodes(),
       environment: carrierConfig.getDefaultEnvironment(),
       quoteType: 'auto'
@@ -1259,7 +1260,7 @@ const fetchQuoteById = async (req, res) => {
       await userProduct.updateQuoteStatus('success');
 
       const quoteResult = await lmsApiService.getQuoteByLeadId(
-        userProduct.leadId.toString()
+        userProduct.appLeadId.toString()  // Use all_leads._id
       );
 
       const quoteRecord = quoteResult.success ? quoteResult.quote : null;
@@ -1355,13 +1356,14 @@ const recalculateQuote = async (req, res) => {
 
     logger.info('Recalculating quote with modified protections', {
       userProductId,
-      leadId: userProduct.leadId,
+      leadId: userProduct.leadId,        // leads._id (internal)
+      appLeadId: userProduct.appLeadId,  // all_leads._id (external)
       hasProtections: !!protections
     });
 
-    // Call LMS to recalculate quote
+    // Call LMS to recalculate quote using appLeadId (all_leads._id)
     const result = await quoteService.recalculateQuote({
-      leadId: userProduct.leadId.toString(),
+      leadId: userProduct.appLeadId.toString(),  // USE all_leads._id
       coverageModifications: protections
     });
 
