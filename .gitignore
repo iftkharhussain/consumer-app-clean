@@ -22,3 +22,4 @@ logs/
 .pm2/
 pids/
 *.md
+data
