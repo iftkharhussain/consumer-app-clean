@@ -74,7 +74,7 @@ const vehicleSchema = new mongoose.Schema({
   cylinder: Number,
   fuelType: {
     type: String,
-    enum: ['G', 'D', 'E', 'H', 'N', ''], // Gas, Diesel, Electric, Hybrid, Natural Gas
+    enum: ['G', 'D', 'E', 'H', 'N', 'V', 'X', ''], // G=Gas, D=Diesel, E=Electric, H=Hybrid, N=Natural Gas, V=Electric Vehicle, X=Other
     default: 'G'
   },
   induction: String,
