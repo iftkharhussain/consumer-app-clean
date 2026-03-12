@@ -101,9 +101,51 @@ async function importVehicles() {
 
           // Insert batch when it reaches BATCH_SIZE
           if (batch.length >= BATCH_SIZE) {
-            await Vehicle.insertMany(batch, { ordered: false });
-            imported += batch.length;
-            console.log(`Imported ${imported} vehicles...`);
+            try {
+              const result = await Vehicle.insertMany(batch, { ordered: false, rawResult: true });
+              const insertedCount = result.insertedCount || result.length;
+              imported += insertedCount;
+              
+              if (insertedCount !== batch.length) {
+                const skippedCount = batch.length - insertedCount;
+                console.warn(`⚠️  Batch ${Math.floor(imported/1000)}: attempted ${batch.length}, inserted ${insertedCount}, skipped ${skippedCount}`);
+                
+                // Log first few records in batch to help debug
+                if (skippedCount > 0) {
+                  const batchKeys = batch.slice(0, 3).map(v => `${v.modelYear}|${v.extVicc}|${v.make}`);
+                  console.warn(`  First 3 in batch: ${batchKeys.join(', ')}`);
+                }
+              } else {
+                console.log(`Imported ${imported} vehicles...`);
+              }
+            } catch (err) {
+              // Mongoose wraps MongoDB BulkWriteError
+              if (err.writeErrors || err.result) {
+                const successCount = err.result ? err.result.nInserted : (batch.length - (err.writeErrors?.length || 0));
+                const errorCount = err.writeErrors?.length || 0;
+                console.warn(`\n⚠️  Batch ${Math.floor(imported/1000)} had ${errorCount} write errors out of ${batch.length} attempts (${successCount} succeeded)`);
+                imported += successCount;
+                
+                // Log details of first few errors  
+                if (err.writeErrors) {
+                  err.writeErrors.slice(0, 5).forEach(e => {
+                    const doc = batch[e.index];
+                    const errCode = e.code || e.err?.code;
+                    const errMsg = e.errmsg || e.err?.errmsg || '';
+                    console.warn(`  [${e.index}] Error ${errCode}: ${doc.modelYear}|${doc.extVicc}|${doc.make} ${doc.model}`);
+                    if (errMsg.includes('duplicate')) {
+                      console.warn(`    Duplicate key error`);
+                    }
+                  });
+                  if (err.writeErrors.length > 5) {
+                    console.warn(`  ... and ${err.writeErrors.length - 5} more errors`);
+                  }
+                }
+              } else {
+                console.error(`Batch error:`, err.message);
+                throw err;
+              }
+            }
             batch = [];
           }
         } catch (err) {
@@ -117,8 +159,61 @@ async function importVehicles() {
 
     // Insert remaining records
     if (batch.length > 0) {
-      await Vehicle.insertMany(batch, { ordered: false });
-      imported += batch.length;
+      console.log(`\nProcessing final batch of ${batch.length} vehicles...`);
+      console.log(`First 3 in batch: ${batch.slice(0, 3).map(v => `${v.modelYear}|${v.extVicc}|${v.make} ${v.model}`).join(', ')}`);
+      console.log( `Last 3 in batch: ${batch.slice(-3).map(v => `${v.modelYear}|${v.extVicc}|${v.make} ${v.model}`).join(', ')}`);
+      
+      // Check for internal duplicates in batch
+      const combinations = new Map();
+      batch.forEach((v, idx) => {
+        const key = `${v.modelYear}|${v.extVicc}`;
+        if (combinations.has(key)) {
+          combinations.get(key).push(idx);
+        } else {
+          combinations.set(key, [idx]);
+        }
+      });
+      
+      const internalDupes = Array.from(combinations.entries()).filter(([_, indexes]) => indexes.length > 1);
+      if (internalDupes.length > 0) {
+        console.warn(`\n⚠️  Found ${internalDupes.length} duplicate (modelYear|extVicc) combinations within the batch:`);
+        internalDupes.slice(0, 10).forEach(([key, indexes]) => {
+          const v = batch[indexes[0]];
+          console.warn(`  ${key} - ${v.make} ${v.model} appears ${indexes.length} times at indexes: ${indexes.join(', ')}`);
+        });
+      }
+      
+      try {
+        const result = await Vehicle.insertMany(batch, { ordered: false, rawResult: true });
+        const insertedCount = result.insertedCount || result.length;
+        imported += insertedCount;
+        console.log(`Imported final batch: ${insertedCount} out of ${batch.length} (${batch.length - insertedCount} not inserted)`);
+      } catch (err) {
+        if (err.writeErrors || err.result) {
+          const successCount = err.result ? err.result.nInserted : (batch.length - (err.writeErrors?.length || 0));
+          const errorCount = err.writeErrors?.length || 0;
+          console.warn(`\n⚠️  Final batch had ${errorCount} write errors out of ${batch.length} attempts (${successCount} succeeded)`);
+          imported += successCount;
+          
+          // Log details of first 10 errors from final batch
+          if (err.writeErrors) {
+            err.writeErrors.slice(0, 10).forEach(e => {
+              const doc = batch[e.index];
+              const errCode = e.code || e.err?.code;
+              const errMsg = e.errmsg || e.err?.errmsg || '';
+              console.warn(`  [${e.index}] Error ${errCode}: ${doc.modelYear}|${doc.extVicc}|${doc.make} ${doc.model}`);
+              if (errMsg) {
+                console.warn(`    ${errMsg.substring(0, 150)}`);
+              }
+            });
+            if (err.writeErrors.length > 10) {
+              console.warn(`  ... and ${err.writeErrors.length - 10} more errors`);
+            }
+          }
+        } else {
+          throw err;
+        }
+      }
     }
 
     console.log(`\n✅ Import completed successfully!`);
