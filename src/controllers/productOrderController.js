@@ -89,7 +89,7 @@ exports.getOrderDetails = async (req, res) => {
 
     return res.json({
       success: true,
-      order: orderData
+      data: orderData
     });
 
   } catch (error) {
