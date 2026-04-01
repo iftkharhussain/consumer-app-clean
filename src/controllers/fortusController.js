@@ -29,7 +29,7 @@ const logger = require('../utils/logger');
 const requestCall = async (req, res) => {
   try {
     const userId = req.userId;
-    const { userProductId, productSlug, selectedQuote, recalculatedQuote, carrierCode } = req.body;
+    const { userProductId, productSlug, selectedQuote, recalculatedQuote, carrierCode, scheduleLater } = req.body;
 
     if (!userId) {
       return res.status(401).json({
@@ -75,35 +75,43 @@ const requestCall = async (req, res) => {
       userProductId: userProduct._id,
       leadId: userProduct.leadId,
       hasRecalculatedQuote: !!recalculatedQuote,
-      carrierCode: carrierCode || 'not specified'
+      carrierCode: carrierCode || 'not specified',
+      scheduleLater: scheduleLater || false
     });
 
-    // Call Fortus service to send the lead
-    // If recalculatedQuote is provided, it will be saved to quote_records in LMS
-    // Pass carrierCode to filter the correct quote in LMS
-    const result = await fortusService.requestCall(userProduct.leadId, recalculatedQuote, carrierCode);
+    let result = null;
+    
+    // If scheduleLater is true, skip Fortus API call and just create the order
+    if (!scheduleLater) {
+      // Call Fortus service to send the lead
+      // If recalculatedQuote is provided, it will be saved to quote_records in LMS
+      // Pass carrierCode to filter the correct quote in LMS
+      result = await fortusService.requestCall(userProduct.leadId, recalculatedQuote, carrierCode);
 
-    if (!result.success) {
-      logger.warn('FortusController.requestCall failed', {
+      if (!result.success) {
+        logger.warn('FortusController.requestCall failed', {
+          leadId: userProduct.leadId,
+          error: result.error,
+          message: result.message
+        });
+
+        // Return appropriate status based on error type
+        const statusCode = result.error === 'QUOTE_NOT_AVAILABLE' ? 400 : 500;
+        
+        return res.status(statusCode).json({
+          success: false,
+          message: result.message,
+          error: result.error
+        });
+      }
+
+      logger.info('FortusController.requestCall success', {
         leadId: userProduct.leadId,
-        error: result.error,
-        message: result.message
+        fortusLeadId: result.data?.fortusLeadId
       });
-
-      // Return appropriate status based on error type
-      const statusCode = result.error === 'QUOTE_NOT_AVAILABLE' ? 400 : 500;
-      
-      return res.status(statusCode).json({
-        success: false,
-        message: result.message,
-        error: result.error
-      });
+    } else {
+      logger.info('FortusController.requestCall - scheduling for later, skipping Fortus API call');
     }
-
-    logger.info('FortusController.requestCall success', {
-      leadId: userProduct.leadId,
-      fortusLeadId: result.data?.fortusLeadId
-    });
 
     // Create product order to track this call request
     try {
@@ -121,26 +129,37 @@ const requestCall = async (req, res) => {
           productSlug: userProduct.productSlug,
           quoteId: null,
           selectedQuote: selectedQuote || null, // Save selected insurer details from frontend
-          fortusDeliveryId: result.data?.deliveryId || result.data?.fortusLeadId,
+          fortusDeliveryId: result?.data?.deliveryId || result?.data?.fortusLeadId || null,
           status: 'call_requested',
           requestedAt: new Date(),
           metadata: {
-            alreadySent: result.data?.alreadySent || false,
-            sentAt: result.data?.sentAt || new Date()
+            scheduledForLater: scheduleLater || false,
+            alreadySent: result?.data?.alreadySent || false,
+            sentAt: result?.data?.sentAt || new Date()
           }
         });
 
         await productOrder.save();
         logger.info('ProductOrder created', { 
           orderId: productOrder._id,
-          selectedInsurer: selectedQuote?.insurerName 
+          selectedInsurer: selectedQuote?.insurerName,
+          scheduledForLater: scheduleLater || false
         });
       } else {
-        logger.info('ProductOrder already exists', { orderId: existingOrder._id });
+        // Update existing order if selectedQuote is provided
+        if (selectedQuote) {
+          existingOrder.selectedQuote = selectedQuote;
+          if (scheduleLater) {
+            existingOrder.metadata = existingOrder.metadata || {};
+            existingOrder.metadata.scheduledForLater = true;
+          }
+          await existingOrder.save();
+        }
+        logger.info('ProductOrder already exists, updated with new data', { orderId: existingOrder._id });
       }
     } catch (orderError) {
       // Log error but don't fail the request
-      logger.error('Failed to create ProductOrder', {
+      logger.error('Failed to create/update ProductOrder', {
         error: orderError.message,
         userProductId: userProduct._id
       });
@@ -148,11 +167,14 @@ const requestCall = async (req, res) => {
 
     return res.json({
       success: true,
-      message: result.message || 'Your call request has been submitted successfully!',
+      message: scheduleLater 
+        ? 'Your order has been saved. Schedule your call to complete the request!'
+        : (result?.message || 'Your call request has been submitted successfully!'),
       data: {
-        fortusLeadId: result.data?.fortusLeadId,
-        status: result.data?.status,
-        userProductId: userProduct._id.toString()
+        fortusLeadId: result?.data?.fortusLeadId,
+        status: result?.data?.status,
+        userProductId: userProduct._id.toString(),
+        scheduledForLater: scheduleLater || false
       }
     });
 
