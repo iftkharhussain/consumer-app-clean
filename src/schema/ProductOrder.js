@@ -45,6 +45,13 @@ const productOrderSchema = new mongoose.Schema({
     oldYearlyPrice: Number,
     discount: Number,               // Percentage discount if applicable
     isIntactDiscount: Boolean,      // Special Intact 10% discount flag
+    coverages: [{
+      id: String,
+      csioCode: String,
+      limit1: Number,
+      deductible: Number,
+      pack: String
+    }]
   },
   
   // Note: Advisor info (office hours, phone, etc.) is fetched from LMS when needed

@@ -36,6 +36,16 @@ exports.getOrderDetails = async (req, res) => {
 
     // Fetch advisor info from LMS using leadId
     let advisorInfo = null;
+    let coverages = [];
+    
+    // First, check if coverages are already stored in selectedQuote
+    if (order.selectedQuote?.coverages && order.selectedQuote.coverages.length > 0) {
+      coverages = order.selectedQuote.coverages;
+      logger.info('Using coverages from selectedQuote', {
+        orderanaId: order._id,
+        coveragesCount: coverages.length
+      });
+    }
     
     try {
       // Get advisor and fortus config from LMS
@@ -68,6 +78,56 @@ exports.getOrderDetails = async (req, res) => {
           maxRetries: 2, // Default 2 retries
         };
       }
+
+      // Fetch quote to get coverages if leadId and productId are available
+      // Only fetch if we don't already have coverages from selectedQuote
+      if (!coverages.length && order.leadId && order.userProductId) {
+        try {
+          // Get the productId from userProduct
+          const UserProduct = require('../schema/UserProduct');
+          const userProduct = await UserProduct.findById(order.userProductId).lean();
+          
+          if (userProduct && userProduct.productId) {
+            // Use the correct endpoint to get full quote details including coverages
+            const quoteResponse = await lmsApiService.lmsGet(`/quotes/${order.leadId}`, {
+              byLead: 'true',
+              productId: userProduct.productId
+            });
+            
+            if (quoteResponse.success && quoteResponse.quote) {
+              const quote = quoteResponse.quote;
+              
+              // Find coverages for the selected carrier
+              if (quote.carriers && quote.carriers.length > 0) {
+                const selectedCarrier = quote.carriers.find(c => c.carrierCode === order.selectedQuote?.carrierCode);
+                
+                if (selectedCarrier && selectedCarrier.coverages && selectedCarrier.coverages.length > 0) {
+                  coverages = selectedCarrier.coverages;
+                  logger.info('Coverages found for selected carrier', {
+                    carrierCode: order.selectedQuote?.carrierCode,
+                    coveragesCount: coverages.length
+                  });
+                } else {
+                  logger.warn('No coverages found for selected carrier, using first available', {
+                    carrierCode: order.selectedQuote?.carrierCode,
+                    availableCarriers: quote.carriers.map(c => c.carrierCode)
+                  });
+                  // Fallback: use coverages from first carrier that has them
+                  const carrierWithCoverages = quote.carriers.find(c => c.coverages && c.coverages.length > 0);
+                  if (carrierWithCoverages) {
+                    coverages = carrierWithCoverages.coverages;
+                  }
+                }
+              }
+            }
+          }
+        } catch (quoteError) {
+          logger.warn('Failed to fetch coverages from quote', {
+            error: quoteError.message,
+            leadId: order.leadId
+          });
+        }
+      }
     } catch (lmsError) {
       logger.warn('Failed to fetch advisor info from LMS', {
         error: lmsError.message,
@@ -78,7 +138,8 @@ exports.getOrderDetails = async (req, res) => {
 
     const orderData = {
       ...order.toObject(),
-      advisorInfo
+      advisorInfo,
+      coverages
     };
 
     logger.info('ProductOrder.getOrderDetails', {
