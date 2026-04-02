@@ -66,7 +66,7 @@ exports.getOrderDetails = async (req, res) => {
           : '';
 
         advisorInfo = {
-          companyName: fortusConfig?.companyName || 'Courtika Assurances Inc',
+          companyName: fortusConfig?.companyName || 'Courtika',
           logo: '/images/courtika-assurances-inc.png', // Static for now
           phone: fortusConfig?.phone || 'XXX XXX XXXX',
           officeHours: fortusConfig?.officeHours || null,
