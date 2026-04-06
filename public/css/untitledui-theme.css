@@ -4,8 +4,8 @@
     --spacing: 4px;
 
     /* FONT FAMILY */
-    --font-body: "Inter", -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-    --font-display: "Inter", -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    --font-body: "Inter", sans-serif;
+    --font-display: "Inter", sans-serif;
     --font-mono: ui-monospace, "Roboto Mono", SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
     /* FONT SIZE */
