@@ -22,12 +22,12 @@ const vinLookupSchema = new mongoose.Schema({
     index: true
   },
   extVicc: {
-    type: Number,
+    type: String,
     required: true,
     index: true
   },
   viccCode: {
-    type: Number,
+    type: String,
     required: true
   },
   

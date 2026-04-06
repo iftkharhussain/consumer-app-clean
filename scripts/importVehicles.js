@@ -67,8 +67,8 @@ async function importVehicles() {
           // Create vehicle object
           const vehicleData = {
             modelYear: parseInt(modelYear) || 0,
-            extVicc: parseInt(extVicc) || 0,
-            viccCode: parseInt(viccCode) || 0,
+            extVicc: extVicc.trim(),
+            viccCode: viccCode.trim(),
             make: make.trim(),
             makeFr: makeFr.trim(),
             model: model.trim(),

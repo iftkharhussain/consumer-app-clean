@@ -81,11 +81,11 @@ async function importVinLookups() {
           const [recNo, vin, viccCode, extVicc, modelYear, multVin] = fields;
 
           const modelYearInt = parseInt(modelYear) || 0;
-          const extViccInt = parseInt(extVicc) || 0;
-          const viccCodeInt = parseInt(viccCode) || 0;
+          const extViccStr = extVicc.trim();
+          const viccCodeStr = viccCode.trim();
 
           // Create cache key for vehicle lookup
-          const cacheKey = `${modelYearInt}-${extViccInt}`;
+          const cacheKey = `${modelYearInt}-${extViccStr}`;
 
           // Get vehicle details (use cache to avoid repeated DB queries)
           let vehicleDetails = vehicleCache.get(cacheKey);
@@ -93,7 +93,7 @@ async function importVinLookups() {
           if (!vehicleDetails) {
             const vehicle = await Vehicle.findOne({
               modelYear: modelYearInt,
-              extVicc: extViccInt
+              extVicc: extViccStr
             }).lean();
 
             if (vehicle) {
@@ -117,8 +117,8 @@ async function importVinLookups() {
           const vinLookupData = {
             vin: vin.toUpperCase(),
             modelYear: modelYearInt,
-            extVicc: extViccInt,
-            viccCode: viccCodeInt,
+            extVicc: extViccStr,
+            viccCode: viccCodeStr,
             vehicleDetails: vehicleDetails || {},
             recNo: parseInt(recNo) || 0,
             multVin: parseInt(multVin) || 0
