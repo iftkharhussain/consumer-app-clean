@@ -201,6 +201,7 @@ exports.checkPendingOrder = async (req, res) => {
         success: true,
         hasPendingOrder: true,
         userProductId: pendingOrder.userProductId.toString(),
+        fortusDeliveryId: pendingOrder.fortusDeliveryId,
         requestedAt: pendingOrder.requestedAt
       });
     }
