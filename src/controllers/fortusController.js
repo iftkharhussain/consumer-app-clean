@@ -146,16 +146,27 @@ const requestCall = async (req, res) => {
           scheduledForLater: scheduleLater || false
         });
       } else {
-        // Update existing order if selectedQuote is provided
+        // Update existing order
         if (selectedQuote) {
           existingOrder.selectedQuote = selectedQuote;
-          if (scheduleLater) {
-            existingOrder.metadata = existingOrder.metadata || {};
-            existingOrder.metadata.scheduledForLater = true;
-          }
-          await existingOrder.save();
         }
-        logger.info('ProductOrder already exists, updated with new data', { orderId: existingOrder._id });
+        
+        // Update delivery ID if we just sent it (this happens in ScheduleConfirmation)
+        const newDeliveryId = result?.data?.deliveryId || result?.data?.fortusLeadId;
+        if (newDeliveryId) {
+          existingOrder.fortusDeliveryId = newDeliveryId;
+        }
+
+        if (scheduleLater) {
+          existingOrder.metadata = existingOrder.metadata || {};
+          existingOrder.metadata.scheduledForLater = true;
+        }
+        
+        await existingOrder.save();
+        logger.info('ProductOrder already exists, updated with latest data', { 
+          orderId: existingOrder._id,
+          fortusDeliveryId: existingOrder.fortusDeliveryId
+        });
       }
     } catch (orderError) {
       // Log error but don't fail the request
