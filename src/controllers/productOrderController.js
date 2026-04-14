@@ -74,7 +74,7 @@ exports.getOrderDetails = async (req, res) => {
           isOpen: officeStatus.isOpen,
           openStatus: officeStatus.message,
           formattedHours,
-          callDuration: 10, // Default 10 minutes
+          callDuration: 15, // Default 15 minutes
           maxRetries: 2, // Default 2 retries
         };
       }
