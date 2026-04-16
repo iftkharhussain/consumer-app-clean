@@ -32,7 +32,7 @@
     /* Logo Container */
     .mobile-navbar-header .logo-container {
         display: flex;
-        align-items: flex-end;
+        align-items: center;
         gap: 8px;
     }
 
@@ -44,12 +44,14 @@
 
     /* Version Text */
     .mobile-navbar-header .logo-container .version-text {
-        color: #7E7E7E;
-        font-family: Inter, sans-serif;
-        font-size: 14px;
-        font-style: normal;
+        font-size: 12px;
         font-weight: 400;
-        line-height: normal;
+        color: #9CA3AF;
+        background: #F3F4F6;
+        padding: 2px 6px;
+        border-radius: 4px;
+        line-height: 1;
+        margin-bottom: -2px; /* Fine-tune vertical alignment with Norga logo */
     }
 
     /* Menu Icon Button */
