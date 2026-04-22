@@ -31,7 +31,7 @@ app.use(cors({
   origin: (origin, callback) => {
     const allowed = [
       process.env.FRONTEND_URL,
-      'https://consumer.norga.app',
+      'https://app.norga.io',
       'https://www.norga.io',
       'https://norga.io',
       'http://localhost:3000',
