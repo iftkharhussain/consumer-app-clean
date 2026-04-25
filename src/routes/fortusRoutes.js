@@ -42,6 +42,30 @@ router.use(authMiddleware);
 router.post('/request-call', fortusController.requestCall);
 
 /**
+ * POST /api/fortus/test-request-call
+ * 
+ * 🔍 DEBUG ENDPOINT - Test which insurer will be sent WITHOUT actually sending to ezLeads
+ * 
+ * This endpoint does everything except calling the actual LMS Fortus API.
+ * It shows you exactly what data would be sent.
+ * 
+ * Body: Same as /request-call
+ * - userProductId: string (optional)
+ * - productSlug: string (optional)
+ * - carrierCode: string (optional) - Which insurer to send
+ * 
+ * Response:
+ * - success: boolean
+ * - message: "TEST MODE - No actual request sent"
+ * - debug: {
+ *     userProduct: { leadId, userId, productSlug },
+ *     carrierCode: string,
+ *     whatWouldBeSent: { leadId, carrierCode, hasQuote }
+ *   }
+ */
+router.post('/test-request-call', fortusController.testRequestCall);
+
+/**
  * GET /api/fortus/office-hours
  * 
  * Get office hours configuration for the lead's assigned advisor.

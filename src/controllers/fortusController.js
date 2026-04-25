@@ -299,7 +299,117 @@ const getOfficeHours = async (req, res) => {
   }
 };
 
+/**
+ * 🔍 DEBUG ENDPOINT - Test request call WITHOUT sending to ezLeads
+ * 
+ * POST /api/fortus/test-request-call
+ * 
+ * This endpoint simulates the entire flow but stops before calling LMS Fortus API.
+ * Use this to test which insurer will be sent without triggering actual ezLeads/emails.
+ */
+const testRequestCall = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { userProductId, productSlug, selectedQuote, recalculatedQuote, carrierCode } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    // Find the user product
+    let userProduct;
+
+    if (userProductId) {
+      userProduct = await UserProduct.findOne({
+        _id: userProductId,
+        userId,
+        status: 'active'
+      });
+    } else if (productSlug) {
+      userProduct = await UserProduct.findByUserAndSlug(userId, productSlug);
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Either productSlug or userProductId is required'
+      });
+    }
+
+    if (!userProduct) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found for this user'
+      });
+    }
+
+    if (!userProduct.leadId) {
+      return res.status(400).json({
+        success: false,
+        message: 'No lead associated with this product.'
+      });
+    }
+
+    // This is what WOULD be sent to LMS
+    const whatWouldBeSent = {
+      leadId: userProduct.leadId,
+      carrierCode: carrierCode || 'NOT_SPECIFIED',
+      hasRecalculatedQuote: !!recalculatedQuote,
+      selectedQuote: selectedQuote ? {
+        insurerName: selectedQuote.insurerName,
+        carrierCode: selectedQuote.carrierCode,
+        monthlyPrice: selectedQuote.monthlyPrice
+      } : null
+    };
+
+    logger.info('🔍 FortusController.testRequestCall (TEST MODE)', {
+      userId,
+      userProductId: userProduct._id,
+      whatWouldBeSent
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: '🔍 TEST MODE - No actual request sent to ezLeads',
+      testMode: true,
+      debug: {
+        userProduct: {
+          _id: userProduct._id,
+          leadId: userProduct.leadId,
+          userId: userProduct.userId,
+          productSlug: userProduct.productSlug
+        },
+        whatWouldBeSent: whatWouldBeSent,
+        explanation: {
+          carrierCode: carrierCode 
+            ? `Will send to insurer with code: ${carrierCode}`
+            : 'No carrierCode provided - LMS will use cheapest from quote_records',
+          selectedQuote: selectedQuote
+            ? `Frontend selected: ${selectedQuote.insurerName} (${selectedQuote.carrierCode})`
+            : 'No selectedQuote in request',
+          recalculatedQuote: recalculatedQuote
+            ? 'Will save recalculated quote to quote_records'
+            : 'Using existing quote from quote_records'
+        }
+      }
+    });
+
+  } catch (error) {
+    logger.error('FortusController.testRequestCall error', {
+      message: error.message,
+      stack: error.stack
+    });
+
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred while testing request.'
+    });
+  }
+};
+
 module.exports = {
   requestCall,
-  getOfficeHours
+  getOfficeHours,
+  testRequestCall
 };
