@@ -313,6 +313,25 @@ async function leadLogin(req, res) {
     // Record the login
     await user.recordLogin('lead-token');
 
+       if (isNew) {
+      console.log(' NEW USER CREATED:', user.email, user.fullName);
+      
+      // Send Welcome Email via Norga-App (LMS)
+      // Note: No 'await' used to keep login fast (fire-and-forget)
+     lmsApiService.lmsPost('/send-welcome-email', { type: 'welcome_email' }, {
+  email: user.email,
+  firstName: user.firstName || user.fullName?.split(' ')[0] || 'User',
+  loginLink: 'https://app.norga.io'
+}).catch(err => {
+        logger.error(' Failed to trigger welcome email', { error: err.message });
+      });
+
+    } else {
+      console.log('  EXISTING USER:', user.email, user.fullName);
+    }
+
+
+
     // Sync lead products from LMS to user_products for both new and duplicate leads
     // This ensures products are always available even if previously deleted
     let userProducts = [];
