@@ -38,9 +38,9 @@ function getProductRedirectUrl(product) {
 
   // Product slug to route mapping
   const productRoutes = {
-    'car-insurance': '/car-insurance',
-    'auto-insurance': '/car-insurance',
-    'automobile': '/car-insurance',
+    'car-insurance': '/result',
+    'auto-insurance': '/result',
+    'automobile': '/result',
     'home-insurance': '/home-insurance',
     'habitation': '/home-insurance',
     'life-insurance': '/life-insurance',
@@ -640,10 +640,13 @@ async function login(req, res) {
 }
 
 /**
- * Phone Login
+ * Phone Login - Step 1: Verify Phone Exists
  * 
  * POST /api/auth/phone-login
  * Body: { phone: string }
+ * 
+ * This endpoint only verifies if a phone number is registered.
+ * User must complete OTP verification to actually log in.
  */
 async function phoneLogin(req, res) {
   try {
@@ -656,8 +659,11 @@ async function phoneLogin(req, res) {
       });
     }
 
+    // Clean phone number
+    const cleanedPhone = phone.trim().replace(/[^\d+]/g, '');
+
     // Find user by phone
-    const user = await User.findOne({ phone: phone.trim() });
+    const user = await User.findOne({ phone: cleanedPhone });
 
     if (!user) {
       return res.status(404).json({
@@ -674,49 +680,109 @@ async function phoneLogin(req, res) {
       });
     }
 
-    // For now, we'll allow direct phone login for lead-based users
-    // In production, you might want to implement phone OTP verification
-    if (user.leadSystemInfo?.isLeadUser && user.phoneVerified) {
-      // Record login
-      await user.recordLogin('lead-token');
-
-      // Generate session token
-      const sessionToken = generateSessionToken(user);
-
-      logger.info('Phone login successful', {
-        userId: user._id,
-        phone: user.phone
-      });
-
-      // Set session cookie
-      res.cookie('session', sessionToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-      });
-
-      return res.status(200).json({
-        success: true,
-        message: 'Logged in successfully',
-        user: {
-          id: user._id,
-          email: user.email,
-          phone: user.phone,
-          fullName: user.fullName || user.displayName,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          avatar: user.avatar,
-          language: user.language
-        },
-        sessionToken
-      });
-    } else {
+    // Verify this is a lead-based user with verified phone
+    if (!user.leadSystemInfo?.isLeadUser || !user.phoneVerified) {
       return res.status(401).json({
         success: false,
         message: 'Phone login is only available for verified lead-based accounts. Please use email/password login.'
       });
     }
+
+    logger.info('Phone verification successful - OTP will be sent', {
+      userId: user._id,
+      phone: cleanedPhone
+    });
+
+    // Return success - frontend will now send OTP
+    return res.status(200).json({
+      success: true,
+      message: 'Phone verified. OTP will be sent.',
+      requiresOTP: true,
+      phone: cleanedPhone
+    });
+  } catch (error) {
+    logger.error('Phone verification error', error);
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred during phone verification'
+    });
+  }
+}
+
+/**
+ * Phone Login - Step 2: Complete Login After OTP Verification
+ * 
+ * POST /api/auth/phone-login-complete
+ * Body: { phone: string }
+ * 
+ * This endpoint is called AFTER successful OTP verification to complete the login.
+ */
+async function phoneLoginComplete(req, res) {
+  try {
+    const { phone } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number is required'
+      });
+    }
+
+    // Clean phone number
+    const cleanedPhone = phone.trim().replace(/[^\d+]/g, '');
+
+    // Find user by phone
+    const user = await User.findOne({ phone: cleanedPhone });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Check user status
+    if (user.status !== 'active') {
+      return res.status(401).json({
+        success: false,
+        message: 'Account is suspended. Please contact support.'
+      });
+    }
+
+    // Record login
+    await user.recordLogin('phone-otp');
+
+    // Generate session token
+    const sessionToken = generateSessionToken(user);
+
+    logger.info('Phone login completed successfully', {
+      userId: user._id,
+      phone: cleanedPhone
+    });
+
+    // Set session cookie
+    res.cookie('session', sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Logged in successfully',
+      user: {
+        id: user._id,
+        email: user.email,
+        phone: user.phone,
+        fullName: user.fullName || user.displayName,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        avatar: user.avatar,
+        language: user.language
+      },
+      sessionToken
+    });
 
   } catch (error) {
     logger.error('Phone login error', { error: error.message, stack: error.stack });
@@ -1025,6 +1091,7 @@ module.exports = {
   // Traditional authentication
   login,
   phoneLogin,
+  phoneLoginComplete,
   register,
 
   // Shared

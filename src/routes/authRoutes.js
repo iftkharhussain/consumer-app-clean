@@ -29,10 +29,18 @@ router.post('/login', authController.login);
 /**
  * POST /api/auth/phone-login
  * 
- * Phone-based login (for verified lead users)
+ * Phone-based login Step 1: Verify phone exists
  * Body: { phone: string }
  */
 router.post('/phone-login', authController.phoneLogin);
+
+/**
+ * POST /api/auth/phone-login-complete
+ * 
+ * Phone-based login Step 2: Complete login after OTP verification
+ * Body: { phone: string }
+ */
+router.post('/phone-login-complete', authController.phoneLoginComplete);
 
 /**
  * POST /api/auth/register
