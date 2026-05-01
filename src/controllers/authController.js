@@ -38,9 +38,9 @@ function getProductRedirectUrl(product) {
 
   // Product slug to route mapping
   const productRoutes = {
-    'car-insurance': '/car-insurance',
-    'auto-insurance': '/car-insurance',
-    'automobile': '/car-insurance',
+    'car-insurance': '/result',
+    'auto-insurance': '/result',
+    'automobile': '/result',
     'home-insurance': '/home-insurance',
     'habitation': '/home-insurance',
     'life-insurance': '/life-insurance',
