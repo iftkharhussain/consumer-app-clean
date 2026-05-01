@@ -39,7 +39,15 @@ const userSchema = new mongoose.Schema({
   // Password (optional - not required for lead-based login)
   password: {
     type: String,
-    select: false, // Don't include in queries by default
+    required: false,
+    validate: {
+      validator: function (value) {
+        // Use a regular expression to check password requirements
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[@#$%^&+=]).{8,}$/;
+        return passwordRegex.test(value);
+      },
+      message: 'passwordRequirements'
+    }
   },
   
   // Lead Management System Reference
@@ -89,6 +97,16 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: 'fr',
   },
+  reset: Boolean,
+  type: { 
+    type: String, 
+    enum: ['advisor', 'admin', 'lead'], 
+    required: true,
+    default: 'lead'
+  },
+  active: { type: Boolean, default: false },
+  twoStepAuthCodeTries: { type: Number, default: 0 },
+  profilePic: { type: String, default: '/images/avatar-default.png' },
   profession: {
     type: String,
     trim: true,
