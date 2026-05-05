@@ -648,8 +648,44 @@ const fetchQuote = async (req, res) => {
       });
     }
 
-    // Find the user's product
-    let userProduct = await UserProduct.findByUserAndSlug(userId, productSlug);
+    // Get the active quote session to ensure we fetch the right product
+    const QuoteSession = require('../schema/QuoteSession');
+    const activeSession = await QuoteSession.findOne({
+      userId,
+      isActive: true,
+      status: 'active'
+    });
+
+    logger.info('Active quote session check', {
+      userId,
+      hasActiveSession: !!activeSession,
+      sessionId: activeSession?.sessionId,
+      requestId
+    });
+
+    // Find the user's product for the active session
+    let userProduct;
+    
+    if (activeSession) {
+      // Find product associated with the active session
+      userProduct = await UserProduct.findOne({
+        userId,
+        productSlug,
+        quoteSessionId: activeSession.sessionId,
+        status: 'active'
+      });
+      
+      logger.info('Looking for product in active session', {
+        sessionId: activeSession.sessionId,
+        found: !!userProduct,
+        requestId
+      });
+    }
+    
+    // Fallback to any product with this slug if no active session
+    if (!userProduct) {
+      userProduct = await UserProduct.findByUserAndSlug(userId, productSlug);
+    }
 
     if (!userProduct) {
       // Product not found - try to sync from LMS
@@ -669,7 +705,18 @@ const fetchQuote = async (req, res) => {
         await syncLeadProducts(userId, user.leadSystemInfo.leadId);
 
         // Try finding the product again
-        userProduct = await UserProduct.findByUserAndSlug(userId, productSlug);
+        if (activeSession) {
+          userProduct = await UserProduct.findOne({
+            userId,
+            productSlug,
+            quoteSessionId: activeSession.sessionId,
+            status: 'active'
+          });
+        }
+        
+        if (!userProduct) {
+          userProduct = await UserProduct.findByUserAndSlug(userId, productSlug);
+        }
       }
 
       if (!userProduct) {

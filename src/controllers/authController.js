@@ -11,8 +11,12 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('../schema/User');
 const UserProduct = require('../schema/UserProduct');
+const QuoteSession = require('../schema/QuoteSession');
 const logger = require('../utils/logger');
 const lmsApiService = require('../services/lmsApiService');
+
+// Lock to prevent concurrent syncs for same user+lead
+const syncLocks = new Map();
 // Legacy: Direct DB access - to be deprecated
 // const lmsDB = require('../config/lmsCollections');
 
@@ -127,15 +131,29 @@ function generateSessionToken(user, leadId = null) {
  * @param {string} leadId - LMS lead ID (from token)
  * @returns {Promise<Array>} Created/updated user products
  */
-async function syncLeadProducts(userId, leadId) {
+async function syncLeadProducts(userId, leadId, quoteData = null, appLeadId = null) {
   try {
     const mongoose = require('mongoose');
+    const { v4: uuidv4 } = require('uuid');
     const leadObjectId = new mongoose.Types.ObjectId(leadId);
+    
+    // Create lock key for this user+lead combination
+    const lockKey = `${userId.toString()}_${leadId}`;
+    
+    // Check if sync already in progress for this user+lead
+    if (syncLocks.has(lockKey)) {
+      logger.info('Sync already in progress, waiting...', { userId, leadId, lockKey });
+      // Wait for the existing sync to complete
+      return await syncLocks.get(lockKey);
+    }
+    
+    // Create a promise for this sync operation
+    const syncPromise = (async () => {
+      try {
+        logger.info('Syncing lead products via API', { userId, leadId });
 
-    logger.info('Syncing lead products via API', { userId, leadId });
-
-    // Fetch lead_products from LMS API (replaces direct DB access)
-    const result = await lmsApiService.getLeadProducts(leadId);
+        // Fetch lead_products from LMS API (replaces direct DB access)
+        const result = await lmsApiService.getLeadProducts(leadId);
 
     if (!result.success || !result.products || result.products.length === 0) {
       logger.info('No lead products found for leadId', { leadId, error: result.error });
@@ -145,26 +163,193 @@ async function syncLeadProducts(userId, leadId) {
     const leadProducts = result.products;
     logger.info('Found lead products from LMS API', { leadId, count: leadProducts.length });
 
+    // Get appLeadId from the first product or use leadId as fallback
+    let appLeadId = null;
+    if (leadProducts.length > 0 && leadProducts[0].leadId) {
+      appLeadId = leadProducts[0].leadId.toString();
+    }
+    
+    // Filter to only products for THIS lead
+    // Note: lead_products.leadId might point to all_leads._id OR all_leads.appLeadId
+    const filteredProducts = leadProducts.filter(lp => {
+      if (!lp.leadId) return false;
+      const lpLeadId = lp.leadId.toString();
+      return lpLeadId === leadId.toString() || (appLeadId && lpLeadId === appLeadId);
+    });
+    
+    if (filteredProducts.length === 0) {
+      logger.warn('No products found for this specific leadId after filtering', { 
+        leadId, 
+        appLeadId,
+        totalProducts: leadProducts.length 
+      });
+      return [];
+    }
+    
+    logger.info('Filtered products for current lead', { 
+      leadId, 
+      appLeadId,
+      filtered: filteredProducts.length,
+      total: leadProducts.length 
+    });
+
     const syncedProducts = [];
 
-    for (const lp of leadProducts) {
+    for (const lp of filteredProducts) {
       // Product info is already included in the API response
       const product = lp.product;
 
-      // Check if user_product already exists
+      // Extract vehicle name from this product's content for session label
+      let vehicleName = 'Assurance Auto';
+      if (lp.content) {
+        try {
+          const content = typeof lp.content === 'string' 
+            ? JSON.parse(lp.content) 
+            : lp.content;
+          
+          // Check for cars array (actual field name in form data)
+          if (content?.cars && content.cars.length > 0) {
+            const firstCar = content.cars[0];
+            if (firstCar.vehicleDetails) {
+              const make = firstCar.vehicleDetails.make || '';
+              const model = firstCar.vehicleDetails.modelFr || firstCar.vehicleDetails.model || '';
+              vehicleName = `${make} ${model}`.trim();
+            } else {
+              vehicleName = `${firstCar.manufacturer || ''} ${firstCar.model || ''}`.trim();
+            }
+          }
+          // Fallback to vehicles array if it exists
+          else if (content?.vehicles && content.vehicles.length > 0) {
+            const firstVehicle = content.vehicles[0];
+            vehicleName = `${firstVehicle.make || ''} ${firstVehicle.model || ''}`.trim();
+          }
+        } catch (e) {
+          logger.warn('Could not parse vehicle name from content', { error: e.message });
+        }
+      }
+      
+      // Find or create quote session for this specific product data
+      // Check if a session with the same vehicle name already exists for this user
+      let quoteSession = await QuoteSession.findOne({ 
+        userId,
+        'label.vehicleName': vehicleName,
+        status: 'active'
+      });
+      
+      if (!quoteSession) {
+        // Create new quote session for this product
+        const sessionId = uuidv4();
+        
+        logger.info('🔵 [DEBUG] Creating new QuoteSession object', {
+          userId: userId.toString(),
+          leadId: (lp.leadId ? lp.leadId.toString() : leadObjectId.toString()),
+          appLeadId: (lp.appLeadId ? lp.appLeadId.toString() : (appLeadId || leadObjectId.toString())),
+          sessionId,
+          vehicleName
+        });
+        
+        // NEW SESSION IS ALWAYS ACTIVE - deactivate old sessions
+        // Mark all existing sessions as inactive (new submission takes priority)
+        await QuoteSession.updateMany(
+          { userId, status: 'active', isActive: true },
+          { $set: { isActive: false } }
+        );
+        
+        logger.info('🔄 Deactivated old sessions for user', { userId: userId.toString() });
+        
+        quoteSession = new QuoteSession({
+          userId,
+          leadId: lp.leadId ? new mongoose.Types.ObjectId(lp.leadId) : leadObjectId,
+          appLeadId: lp.appLeadId ? new mongoose.Types.ObjectId(lp.appLeadId) : (appLeadId ? new mongoose.Types.ObjectId(appLeadId) : leadObjectId),
+          sessionId,
+          label: {
+            vehicleName,
+            createdDate: new Date()
+          },
+          quoteData: lp.content || {},
+          status: 'active',
+          isActive: true, // NEW SESSION IS ALWAYS ACTIVE
+          quoteStatus: 'pending',
+          userProductIds: []
+        });
+        
+        logger.info('🔵 [DEBUG] QuoteSession object created, about to save', {
+          _id: quoteSession._id?.toString(),
+          sessionId: quoteSession.sessionId,
+          userId: quoteSession.userId?.toString(),
+          isNew: quoteSession.isNew
+        });
+        
+        try {
+          const savedSession = await quoteSession.save();
+          
+          logger.info('🟢 [DEBUG] QuoteSession.save() completed', {
+            savedId: savedSession._id?.toString(),
+            sessionId: savedSession.sessionId,
+            userId: savedSession.userId?.toString()
+          });
+          
+          // Verify it's actually in the database
+          const verifySession = await QuoteSession.findOne({ sessionId: savedSession.sessionId });
+          if (verifySession) {
+            logger.info('✅ [DEBUG] QuoteSession verified in database', {
+              foundId: verifySession._id.toString(),
+              sessionId: verifySession.sessionId
+            });
+          } else {
+            logger.error('❌ [DEBUG] QuoteSession NOT FOUND in database after save!', {
+              sessionId: savedSession.sessionId,
+              userId: userId.toString()
+            });
+          }
+          
+          logger.info('Created quote session during sync', { 
+            userId, 
+            sessionId, 
+            vehicleName,
+            isActive: quoteSession.isActive,
+            leadProductId: lp._id
+          });
+        } catch (saveError) {
+          logger.error('❌ Failed to save quote session', {
+            userId,
+            sessionId,
+            error: saveError.message,
+            stack: saveError.stack,
+            name: saveError.name,
+            code: saveError.code
+          });
+          // Continue without session - don't fail the whole sync
+        }
+      } else {
+        logger.info('Using existing quote session for vehicle', {
+          userId,
+          sessionId: quoteSession.sessionId,
+          vehicleName
+        });
+      }
+
+      // Check if user_product already exists for THIS specific lead + product
+      // Each lead should have its own user_product (for multiple quote sessions)
       const existingProduct = await UserProduct.findOne({
-        leadId: leadObjectId,
         leadProductId: lp._id,
       });
 
       if (existingProduct) {
         // Update if exists - also update slug/name if they were missing
         existingProduct.userId = userId;
+        existingProduct.leadId = lp.leadId ? new mongoose.Types.ObjectId(lp.leadId) : leadObjectId;
         
         // Update appLeadId if provided (new field)
         if (lp.appLeadId) {
           existingProduct.appLeadId = new mongoose.Types.ObjectId(lp.appLeadId);
         }
+        
+        // Update leadProductId to the current one
+        existingProduct.leadProductId = lp._id;
+        
+        // Link to quote session
+        existingProduct.quoteSessionId = quoteSession.sessionId;
         
         // Fix missing slug/name from previous buggy syncs
         if (!existingProduct.productSlug && product?.slug) {
@@ -196,6 +381,7 @@ async function syncLeadProducts(userId, leadId) {
           productId: product?._id || lp.productId,
           productSlug,
           productName,
+          quoteSessionId: quoteSession.sessionId, // Link to session
           status: 'active',
           quoteStatus: 'not_requested',
           lmsMetadata: {
@@ -208,31 +394,59 @@ async function syncLeadProducts(userId, leadId) {
         
         logger.info('Creating user_product', {
           userId,
-          leadId,
+          leadId: lp.leadId ? lp.leadId.toString() : leadId,
           productSlug,
           productName,
-          productId: product?._id
+          productId: product?._id,
+          sessionId: quoteSession.sessionId
         });
         
         await userProduct.save();
         syncedProducts.push(userProduct);
+      }
+      
+      // Add product ID to session's userProductIds if not already there
+      const lastProduct = syncedProducts[syncedProducts.length - 1];
+      if (!quoteSession.userProductIds.some(id => id.toString() === lastProduct._id.toString())) {
+        quoteSession.userProductIds.push(lastProduct._id);
+        await quoteSession.save();
       }
     }
 
     logger.info('Synced lead products to user_products', {
       userId,
       leadId,
-      syncedCount: syncedProducts.length
+      syncedCount: syncedProducts.length,
+      sessionsCreated: syncedProducts.map(p => p.quoteSessionId).filter((v, i, a) => a.indexOf(v) === i).length
     });
 
     return syncedProducts;
+      } catch (error) {
+        logger.error('Error syncing lead products', {
+          userId,
+          leadId,
+          error: error.message
+        });
+        // Don't throw - we don't want to fail login if product sync fails
+        return [];
+      } finally {
+        // Remove lock
+        syncLocks.delete(lockKey);
+      }
+    })();
+    
+    // Store the promise in the lock map
+    syncLocks.set(lockKey, syncPromise);
+    
+    // Wait for sync to complete
+    return await syncPromise;
+    
   } catch (error) {
-    logger.error('Error syncing lead products', {
+    logger.error('Error in syncLeadProducts wrapper', {
       userId,
       leadId,
       error: error.message
     });
-    // Don't throw - we don't want to fail login if product sync fails
     return [];
   }
 }

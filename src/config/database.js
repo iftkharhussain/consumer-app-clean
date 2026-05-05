@@ -15,17 +15,24 @@ const connectDB = async () => {
   // Startup environment info
   try {
     // Connect to Consumer App Database (primary)
+    console.log('[DATABASE] Connecting to:', config.mongodb.uri);
     const conn = await mongoose.connect(config.mongodb.uri, config.mongodb.options);
+    
+    console.log(`✅ [DATABASE] Connected to Consumer DB: ${conn.connection.host} / ${conn.connection.name}`);
+    console.log(`[DATABASE] Connection ready state: ${mongoose.connection.readyState}`);
+    console.log(`[DATABASE] Write concern: ${JSON.stringify(mongoose.connection.writeConcern || 'default')}`);
     
     // Debug: Check database and collections after connection
     setTimeout(async () => {
       try {
         const collections = await mongoose.connection.db.listCollections().toArray();
+        console.log(`[DATABASE] Available collections: ${collections.map(c => c.name).join(', ')}`);
         
         // Check if users collection exists and count
         if (collections.some(c => c.name === 'users')) {
           const User = mongoose.connection.db.collection('users');
           const userCount = await User.countDocuments();
+          console.log(`[DATABASE] Users collection exists with ${userCount} documents`);
           
           if (userCount > 0) {
             const adminUser = await User.findOne({ email: 'admin@norga.io' }, { projection: { email: 1, role: 1, isAdmin: 1 } });

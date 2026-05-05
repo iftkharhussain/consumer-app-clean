@@ -54,6 +54,13 @@ const userProductSchema = new mongoose.Schema({
     type: String,
   },
   
+  // Quote session reference (for multiple quotes support)
+  quoteSessionId: {
+    type: String,
+    index: true,
+    comment: 'Links this product to a specific quote session'
+  },
+  
   // Quote status tracking
   quoteStatus: {
     type: String,
@@ -106,7 +113,8 @@ const userProductSchema = new mongoose.Schema({
 // Compound indexes for efficient querying
 userProductSchema.index({ userId: 1, productId: 1 });
 userProductSchema.index({ userId: 1, leadId: 1 });
-userProductSchema.index({ leadId: 1, productId: 1 }, { unique: true });
+// Removed unique constraint to support multiple quote sessions per lead+product
+userProductSchema.index({ leadId: 1, productId: 1 });
 
 /**
  * Find all products for a user
