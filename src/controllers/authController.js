@@ -935,7 +935,10 @@ async function phoneLoginComplete(req, res) {
   try {
     const { phone } = req.body;
 
+    logger.info('[phoneLoginComplete] Request received', { phone, body: req.body });
+
     if (!phone) {
+      logger.warn('[phoneLoginComplete] No phone provided');
       return res.status(400).json({
         success: false,
         message: 'Phone number is required'
@@ -944,19 +947,25 @@ async function phoneLoginComplete(req, res) {
 
     // Clean phone number
     const cleanedPhone = phone.trim().replace(/[^\d+]/g, '');
+    logger.info('[phoneLoginComplete] Phone cleaned', { original: phone, cleaned: cleanedPhone });
 
     // Find user by phone
+    logger.info('[phoneLoginComplete] Searching for user by phone', { phone: cleanedPhone });
     const user = await User.findOne({ phone: cleanedPhone });
 
     if (!user) {
+      logger.warn('[phoneLoginComplete] User not found', { phone: cleanedPhone });
       return res.status(404).json({
         success: false,
         message: 'User not found'
       });
     }
 
+    logger.info('[phoneLoginComplete] User found', { userId: user._id, email: user.email });
+
     // Check user status
     if (user.status !== 'active') {
+      logger.warn('[phoneLoginComplete] User account not active', { userId: user._id, status: user.status });
       return res.status(401).json({
         success: false,
         message: 'Account is suspended. Please contact support.'
@@ -964,9 +973,11 @@ async function phoneLoginComplete(req, res) {
     }
 
     // Record login
+    logger.info('[phoneLoginComplete] Recording login', { userId: user._id });
     await user.recordLogin('phone-otp');
 
     // Generate session token
+    logger.info('[phoneLoginComplete] Generating session token', { userId: user._id });
     const sessionToken = generateSessionToken(user);
 
     logger.info('Phone login completed successfully', {
@@ -999,10 +1010,17 @@ async function phoneLoginComplete(req, res) {
     });
 
   } catch (error) {
-    logger.error('Phone login error', { error: error.message, stack: error.stack });
+    logger.error('[phoneLoginComplete] Error occurred', { 
+      error: error.message, 
+      stack: error.stack,
+      phone: req.body?.phone,
+      errorName: error.name,
+      errorCode: error.code
+    });
     return res.status(500).json({
       success: false,
-      message: 'An error occurred during login'
+      message: 'An error occurred during login',
+      ...(process.env.NODE_ENV !== 'production' && { errorDetail: error.message })
     });
   }
 }

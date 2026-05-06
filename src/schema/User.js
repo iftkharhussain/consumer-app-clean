@@ -136,7 +136,7 @@ const userSchema = new mongoose.Schema({
   },
   lastLoginMethod: {
     type: String,
-    enum: ['password', 'lead-token'],
+    enum: ['password', 'lead-token', 'phone-otp'],
   },
   
   // Two-factor authentication
