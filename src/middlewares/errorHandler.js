@@ -49,6 +49,14 @@ const errorHandler = (err, req, res, next) => {
  * 404 handler for undefined routes
  */
 const notFound = (req, res, next) => {
+  // Suppress WebDAV probe logs (PROPFIND, OPTIONS, etc.)
+  const isWebDavProbe = ['PROPFIND', 'PROPPATCH', 'MKCOL', 'COPY', 'MOVE', 'LOCK', 'UNLOCK'].includes(req.method);
+  
+  if (isWebDavProbe) {
+    // Return 404 silently without logging
+    return res.status(404).json({ success: false, message: 'Not Found' });
+  }
+  
   const error = new Error(`Not Found - ${req.originalUrl}`);
   error.statusCode = 404;
   next(error);
