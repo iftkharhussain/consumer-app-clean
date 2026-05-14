@@ -41,6 +41,7 @@ async function createQuoteSession(req, res) {
     const canCreate = await QuoteSession.canCreateNewSession(userId);
     
     if (!canCreate) {
+      console.log(' [DEBUG] Quote limit exceeded for user:', userId);
       logger.warn('User attempted to create 4th quote session', { userId });
       return res.status(400).json({
         success: false,

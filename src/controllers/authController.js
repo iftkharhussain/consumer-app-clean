@@ -237,6 +237,17 @@ async function syncLeadProducts(userId, leadId, quoteData = null, appLeadId = nu
       });
       
       if (!quoteSession) {
+        // Check if user has exceeded 3 active sessions
+        const canCreate = await QuoteSession.canCreateNewSession(userId);
+        
+        if (!canCreate) {
+          logger.warn('User attempted to sync 4th quote session, limit exceeded', { userId });
+          console.log(' [DEBUG] Quote limit exceeded for user during sync:', userId);
+          // Skip creating the quote session since limit is reached
+          syncedProducts.limitExceeded = true;
+          continue;
+        }
+
         // Create new quote session for this product
         const sessionId = uuidv4();
         
@@ -575,6 +586,12 @@ async function leadLogin(req, res) {
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
 
+    // Handle quote limit exceeded during sync
+    let limitExceeded = false;
+    if (userProducts.limitExceeded) {
+      limitExceeded = true;
+    }
+
     // Prepare products list for response
     const products = userProducts.map(up => ({
       id: up._id,
@@ -601,6 +618,7 @@ async function leadLogin(req, res) {
       isNewUser: isNew,
       userAlreadyExists: !isNew, // Flag for frontend to show appropriate message
       showResubmitAlert: showResubmitAlert || false, // Show alert if user resubmitted with different info
+      limitExceeded,
       products, // Include synced products
       redirectTo: getProductRedirectUrl(tokenData.product) // Redirect based on product
     });
@@ -863,6 +881,7 @@ async function login(req, res) {
  * User must complete OTP verification to actually log in.
  */
 async function phoneLogin(req, res) {
+   console.log('STEP 1: Checking if phone exists:', req.body.phone);
   try {
     const { phone } = req.body;
 
