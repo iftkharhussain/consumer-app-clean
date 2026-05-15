@@ -305,6 +305,7 @@ const pollQuoteStatus = async (req, res) => {
 
     // Call LMS to get current quote status - pass object with both IDs
     const result = await quoteService.checkQuoteStatusById({ quoteId, allLeadsId });
+    console.log(' [LMS POLL RAW]:', JSON.stringify(result, null, 2));
 
     console.log('[pollQuoteStatus] Result from LMS:', { 
       success: result.success, 
@@ -411,7 +412,24 @@ const pollQuoteStatus = async (req, res) => {
       }),
       // Include timing info
       createdAt: quote.createdAt,
-      updatedAt: quote.updatedAt
+      updatedAt: quote.updatedAt,
+      cars: await (async () => {
+        try {
+          const leadIdForCars = quote.leadId || allLeadsId;
+          if (leadIdForCars) {
+            const UserProduct = require('../schema/UserProduct');
+            const up = await UserProduct.findOne({ leadId: leadIdForCars, status: 'active' });
+            let content = up?.lmsMetadata?.content;
+            if (typeof content === 'string') {
+              try { content = JSON.parse(content); } catch (e) {}
+            }
+            return content?.cars || [];
+          }
+        } catch (e) {
+          console.error('[pollQuoteStatus] Error fetching cars:', e.message);
+        }
+        return [];
+      })()
     });
 
   } catch (error) {
@@ -784,6 +802,7 @@ const fetchQuote = async (req, res) => {
       );
 
       if (result.success && result.quote) {
+        console.log(' [LMS RAW QUOTE]:', JSON.stringify(result.quote, null, 2));
         const quoteRecord = result.quote;
         // Get carriers from the API response
         const carriers = quoteRecord.carriers || [];
@@ -799,7 +818,14 @@ const fetchQuote = async (req, res) => {
             carriersCount: carriers.length || quoteRecord.carriersCount || 0,
             responseTime: quoteRecord.responseTime,
             createdAt: quoteRecord.createdAt,
-            trackingNumber: quoteRecord.trackingNumber
+            trackingNumber: quoteRecord.trackingNumber,
+            cars: (() => {
+              let content = userProduct.lmsMetadata?.content;
+              if (typeof content === 'string') {
+                try { content = JSON.parse(content); } catch (e) {}
+              }
+              return content?.cars || [];
+            })()
           }
         });
       }

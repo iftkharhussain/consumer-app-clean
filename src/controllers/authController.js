@@ -485,7 +485,7 @@ async function leadLogin(req, res) {
     if (!token) {
       return res.status(400).json({
         success: false,
-        message: 'Token is required'
+        message: 'Le jeton est requis'
       });
     }
 
@@ -496,7 +496,7 @@ async function leadLogin(req, res) {
       logger.warn('Lead login failed - invalid token', { error: verification.error });
       return res.status(401).json({
         success: false,
-        message: verification.error || 'Invalid or expired token'
+        message: verification.error || 'Jeton invalide ou expiré'
       });
     }
 
@@ -527,7 +527,7 @@ async function leadLogin(req, res) {
         success: false,
         requiresManualLogin: true,
         credentialsMismatch,
-        message: 'Credentials mismatch. Please login manually.',
+        message: 'Discordance des identifiants. Veuillez vous connecter manuellement.',
         submittedCredentials: {
           phone: tokenData.phone,
           email: tokenData.email
@@ -604,7 +604,7 @@ async function leadLogin(req, res) {
 
     return res.status(200).json({
       success: true,
-      message: isNew ? 'Account created and logged in' : 'Logged in successfully',
+      message: isNew ? 'Compte créé et connecté' : 'Connecté avec succès',
       user: {
         id: user._id,
         email: user.email,
@@ -627,7 +627,7 @@ async function leadLogin(req, res) {
     logger.error('Lead login error', { error: error.message, stack: error.stack });
     return res.status(500).json({
       success: false,
-      message: 'An error occurred during login'
+      message: 'Une erreur est survenue lors de la connexion'
     });
   }
 }
@@ -773,7 +773,7 @@ async function login(req, res) {
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Email and password are required'
+        message: 'L\'e-mail et le mot de passe sont requis'
       });
     }
 
@@ -796,7 +796,7 @@ async function login(req, res) {
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password'
+        message: 'E-mail ou mot de passe invalide'
       });
     }
 
@@ -804,7 +804,7 @@ async function login(req, res) {
     if (!user.password) {
       return res.status(401).json({
         success: false,
-        message: 'Please login using your phone number or contact support'
+        message: 'Veuillez vous connecter avec votre numéro de téléphone ou contacter le support'
       });
     }
 
@@ -815,7 +815,7 @@ async function login(req, res) {
       console.log('Invalid password for user:', user.email);
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password'
+        message: 'E-mail ou mot de passe invalide'
       });
     }
 
@@ -823,7 +823,7 @@ async function login(req, res) {
     if (user.status !== 'active') {
       return res.status(401).json({
         success: false,
-        message: 'Account is suspended. Please contact support.'
+        message: 'Le compte est suspendu. Veuillez contacter le support.'
       });
     }
 
@@ -848,7 +848,7 @@ async function login(req, res) {
 
     return res.status(200).json({
       success: true,
-      message: 'Logged in successfully',
+      message: 'Connecté avec succès',
       user: {
         id: user._id,
         email: user.email,
@@ -866,7 +866,7 @@ async function login(req, res) {
     logger.error('Email login error', { error: error.message, stack: error.stack });
     return res.status(500).json({
       success: false,
-      message: 'An error occurred during login'
+      message: 'Une erreur est survenue lors de la connexion'
     });
   }
 }
@@ -888,7 +888,7 @@ async function phoneLogin(req, res) {
     if (!phone) {
       return res.status(400).json({
         success: false,
-        message: 'Phone number is required'
+        message: 'Le numéro de téléphone est requis'
       });
     }
 
@@ -901,7 +901,7 @@ async function phoneLogin(req, res) {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'No account found with this phone number. Please register first.'
+        message: 'Aucun compte trouvé avec ce numéro de téléphone. Veuillez vous inscrire d\'abord.'
       });
     }
 
@@ -909,7 +909,7 @@ async function phoneLogin(req, res) {
     if (user.status !== 'active') {
       return res.status(401).json({
         success: false,
-        message: 'Account is suspended. Please contact support.'
+        message: 'Le compte est suspendu. Veuillez contacter le support.'
       });
     }
 
@@ -917,7 +917,7 @@ async function phoneLogin(req, res) {
     if (!user.leadSystemInfo?.isLeadUser || !user.phoneVerified) {
       return res.status(401).json({
         success: false,
-        message: 'Phone login is only available for verified lead-based accounts. Please use email/password login.'
+        message: 'La connexion par téléphone n\'est disponible que pour les comptes basés sur des prospects vérifiés. Veuillez utiliser la connexion par e-mail/mot de passe.'
       });
     }
 
@@ -929,7 +929,7 @@ async function phoneLogin(req, res) {
     // Return success - frontend will now send OTP
     return res.status(200).json({
       success: true,
-      message: 'Phone verified. OTP will be sent.',
+      message: 'Téléphone vérifié. Un code de vérification sera envoyé.',
       requiresOTP: true,
       phone: cleanedPhone
     });
@@ -937,7 +937,7 @@ async function phoneLogin(req, res) {
     logger.error('Phone verification error', error);
     return res.status(500).json({
       success: false,
-      message: 'An error occurred during phone verification'
+      message: 'Une erreur est survenue lors de la vérification du téléphone'
     });
   }
 }
@@ -960,7 +960,7 @@ async function phoneLoginComplete(req, res) {
       logger.warn('[phoneLoginComplete] No phone provided');
       return res.status(400).json({
         success: false,
-        message: 'Phone number is required'
+        message: 'Le numéro de téléphone est requis'
       });
     }
 
@@ -976,7 +976,7 @@ async function phoneLoginComplete(req, res) {
       logger.warn('[phoneLoginComplete] User not found', { phone: cleanedPhone });
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: 'Utilisateur non trouvé'
       });
     }
 
@@ -987,7 +987,7 @@ async function phoneLoginComplete(req, res) {
       logger.warn('[phoneLoginComplete] User account not active', { userId: user._id, status: user.status });
       return res.status(401).json({
         success: false,
-        message: 'Account is suspended. Please contact support.'
+        message: 'Le compte est suspendu. Veuillez contacter le support.'
       });
     }
 
@@ -1014,7 +1014,7 @@ async function phoneLoginComplete(req, res) {
 
     return res.status(200).json({
       success: true,
-      message: 'Logged in successfully',
+      message: 'Connecté avec succès',
       user: {
         id: user._id,
         email: user.email,
@@ -1038,7 +1038,7 @@ async function phoneLoginComplete(req, res) {
     });
     return res.status(500).json({
       success: false,
-      message: 'An error occurred during login',
+      message: 'Une erreur est survenue lors de la connexion',
       ...(process.env.NODE_ENV !== 'production' && { errorDetail: error.message })
     });
   }
@@ -1057,7 +1057,7 @@ async function register(req, res) {
     if (!email || !password || !phone) {
       return res.status(400).json({
         success: false,
-        message: 'Email, password, and phone number are required'
+        message: 'L\'e-mail, le mot de passe et le numéro de téléphone sont requis'
       });
     }
 
@@ -1072,7 +1072,7 @@ async function register(req, res) {
     if (existingUser) {
       return res.status(409).json({
         success: false,
-        message: 'User with this email or phone number already exists'
+        message: 'Un utilisateur avec cet e-mail ou ce numéro de téléphone existe déjà'
       });
     }
 
@@ -1112,7 +1112,7 @@ async function register(req, res) {
 
     return res.status(201).json({
       success: true,
-      message: 'Account created successfully',
+      message: 'Compte créé avec succès',
       user: {
         id: user._id,
         email: user.email,
@@ -1130,7 +1130,7 @@ async function register(req, res) {
     logger.error('Registration error', { error: error.message, stack: error.stack });
     return res.status(500).json({
       success: false,
-      message: 'An error occurred during registration'
+      message: 'Une erreur est survenue lors de l\'enregistrement'
     });
   }
 }
@@ -1148,7 +1148,7 @@ async function verifyAuth(req, res) {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: 'Not authenticated'
+        message: 'Non authentifié'
       });
     }
 
@@ -1157,13 +1157,13 @@ async function verifyAuth(req, res) {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: 'Utilisateur non trouvé'
       });
     }
 
     return res.status(200).json({
       success: true,
-      message: 'Token verified',
+      message: 'Jeton vérifié',
       data: {
         id: user._id,
         _id: user._id,
