@@ -892,18 +892,32 @@ async function phoneLogin(req, res) {
       });
     }
 
-    // Clean phone number
+    // Clean phone number - keep only digits and +
     const cleanedPhone = phone.trim().replace(/[^\d+]/g, '');
+    // Also create a version without the + prefix for flexible matching
+    const phoneWithoutPlus = cleanedPhone.replace(/^\+/, '');
+    const phoneWithPlus = cleanedPhone.startsWith('+') ? cleanedPhone : `+${cleanedPhone}`;
 
-    // Find user by phone
-    const user = await User.findOne({ phone: cleanedPhone });
+    console.log('Phone lookup variants:', { cleanedPhone, phoneWithoutPlus, phoneWithPlus });
+
+    // Find user by phone - try both with and without + prefix
+    const user = await User.findOne({
+      $or: [
+        { phone: cleanedPhone },
+        { phone: phoneWithoutPlus },
+        { phone: phoneWithPlus }
+      ]
+    });
 
     if (!user) {
+      console.log('No user found for any phone variant:', { cleanedPhone, phoneWithoutPlus, phoneWithPlus });
       return res.status(404).json({
         success: false,
         message: 'Aucun compte trouvé avec ce numéro de téléphone. Veuillez vous inscrire d\'abord.'
       });
     }
+
+    console.log('User found:', { userId: user._id, dbPhone: user.phone, inputPhone: cleanedPhone });
 
     // Check user status
     if (user.status !== 'active') {
@@ -966,14 +980,22 @@ async function phoneLoginComplete(req, res) {
 
     // Clean phone number
     const cleanedPhone = phone.trim().replace(/[^\d+]/g, '');
-    logger.info('[phoneLoginComplete] Phone cleaned', { original: phone, cleaned: cleanedPhone });
+    const phoneWithoutPlus = cleanedPhone.replace(/^\+/, '');
+    const phoneWithPlus = cleanedPhone.startsWith('+') ? cleanedPhone : `+${cleanedPhone}`;
+    logger.info('[phoneLoginComplete] Phone cleaned', { original: phone, cleaned: cleanedPhone, phoneWithoutPlus, phoneWithPlus });
 
-    // Find user by phone
+    // Find user by phone - try both with and without + prefix
     logger.info('[phoneLoginComplete] Searching for user by phone', { phone: cleanedPhone });
-    const user = await User.findOne({ phone: cleanedPhone });
+    const user = await User.findOne({
+      $or: [
+        { phone: cleanedPhone },
+        { phone: phoneWithoutPlus },
+        { phone: phoneWithPlus }
+      ]
+    });
 
     if (!user) {
-      logger.warn('[phoneLoginComplete] User not found', { phone: cleanedPhone });
+      logger.warn('[phoneLoginComplete] User not found', { phone: cleanedPhone, phoneWithoutPlus, phoneWithPlus });
       return res.status(404).json({
         success: false,
         message: 'Utilisateur non trouvé'
