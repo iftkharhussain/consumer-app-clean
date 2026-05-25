@@ -32,6 +32,10 @@ const productOrderSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  quoteTrackingNumber: {
+    type: String,
+    default: null
+  },
   
   // Selected quote information (what user chose)
   // This is saved because it's specific to this order and won't change

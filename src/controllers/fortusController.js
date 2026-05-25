@@ -128,6 +128,7 @@ const requestCall = async (req, res) => {
           leadId: userProduct.leadId,
           productSlug: userProduct.productSlug,
           quoteId: null,
+          quoteTrackingNumber: result?.data?.trackingNumber || null,
           selectedQuote: selectedQuote || null, // Save selected insurer details from frontend
           fortusDeliveryId: result?.data?.deliveryId || result?.data?.fortusLeadId || null,
           status: 'call_requested',
@@ -140,9 +141,10 @@ const requestCall = async (req, res) => {
         });
 
         await productOrder.save();
-        logger.info('ProductOrder created', { 
+        logger.info('ProductOrder created', {
           orderId: productOrder._id,
           selectedInsurer: selectedQuote?.insurerName,
+          quoteTrackingNumber: productOrder.quoteTrackingNumber,
           scheduledForLater: scheduleLater || false
         });
       } else {
@@ -150,18 +152,24 @@ const requestCall = async (req, res) => {
         if (selectedQuote) {
           existingOrder.selectedQuote = selectedQuote;
         }
-        
+
         // Update delivery ID if we just sent it (this happens in ScheduleConfirmation)
         const newDeliveryId = result?.data?.deliveryId || result?.data?.fortusLeadId;
         if (newDeliveryId) {
           existingOrder.fortusDeliveryId = newDeliveryId;
         }
 
+        // Update tracking number if returned from LMS
+        const newTrackingNumber = result?.data?.trackingNumber;
+        if (newTrackingNumber && !existingOrder.quoteTrackingNumber) {
+          existingOrder.quoteTrackingNumber = newTrackingNumber;
+        }
+
         if (scheduleLater) {
           existingOrder.metadata = existingOrder.metadata || {};
           existingOrder.metadata.scheduledForLater = true;
         }
-        
+
         await existingOrder.save();
         logger.info('ProductOrder already exists, updated with latest data', { 
           orderId: existingOrder._id,
