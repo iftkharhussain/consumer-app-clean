@@ -229,9 +229,10 @@ async function syncLeadProducts(userId, leadId, quoteData = null, appLeadId = nu
       }
       
       // Find or create quote session for this specific product data
-      // Check if a session with the same vehicle name already exists for this user
+      // Check if a session with the same leadId and vehicle name already exists for this user
       let quoteSession = await QuoteSession.findOne({ 
         userId,
+        leadId: lp.leadId ? new mongoose.Types.ObjectId(lp.leadId) : leadObjectId,
         'label.vehicleName': vehicleName,
         status: 'active'
       });
