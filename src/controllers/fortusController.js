@@ -433,7 +433,7 @@ const testRequestCall = async (req, res) => {
 const trackEvent = async (req, res) => {
   try {
     const userId = req.userId;
-    const { userProductId, eventType } = req.body;
+    const { userProductId, eventType, additionalData } = req.body;
 
     if (!userId) {
       return res.status(401).json({
@@ -465,9 +465,9 @@ const trackEvent = async (req, res) => {
       });
     }
 
-    logger.info('FortusController.trackEvent', { userId, userProductId, eventType });
+    logger.info('FortusController.trackEvent', { userId, userProductId, eventType, additionalData });
 
-    const result = await fortusService.trackEvent(userProductId, eventType);
+    const result = await fortusService.trackEvent(userProductId, eventType, additionalData);
 
     return res.json({
       success: result.success,
