@@ -197,20 +197,22 @@ const getOfficeHoursByLead = async (leadId) => {
  * @param {string} eventType - 'call' | 'meeting'
  * @returns {Promise<Object>} { success, message, alreadyExists, data }
  */
-const trackEvent = async (userProductId, eventType, additionalData = {}) => {
+const trackEvent = async (userProductId, eventType, additionalData = {}, appLeadId = null) => {
   try {
     if (!userProductId || !eventType) {
       throw new Error('userProductId and eventType are required');
     }
 
-    logger.info('FortusService.trackEvent', { userProductId, eventType, additionalData });
+    logger.info('FortusService.trackEvent', { userProductId, eventType, appLeadId });
 
     const result = await lmsPost('/fortus/track-event', {
-      userProductId
+      userProductId,
+      appLeadId // Include in JWT token for cross-app auth
     }, {
       userProductId,
       eventType,
-      additionalData
+      additionalData,
+      appLeadId // Include in body so LMS can use it directly
     });
 
     return {

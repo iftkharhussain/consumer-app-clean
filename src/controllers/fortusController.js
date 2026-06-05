@@ -465,9 +465,10 @@ const trackEvent = async (req, res) => {
       });
     }
 
-    logger.info('FortusController.trackEvent', { userId, userProductId, eventType, additionalData });
+    const appLeadId = userProduct.appLeadId?.toString();
+    logger.info('FortusController.trackEvent', { userId, userProductId, eventType, appLeadId });
 
-    const result = await fortusService.trackEvent(userProductId, eventType, additionalData);
+    const result = await fortusService.trackEvent(userProductId, eventType, additionalData, appLeadId);
 
     return res.json({
       success: result.success,

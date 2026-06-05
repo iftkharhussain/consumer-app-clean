@@ -39,7 +39,6 @@ const generateCrossAppToken = (payload, expiresIn = '5m') => {
       expiresIn 
     }
   );
-  console.log('[LmsApiService] Generated token:', token.substring(0, 50) + '... (length: ' + token.length + ')');
   return token;
 };
 
@@ -60,7 +59,7 @@ const lmsGet = async (endpoint, tokenPayload, queryParams = {}) => {
     }
   });
   
-  console.log('[LmsApiService] Making request to:', url.toString());
+
 
   const response = await axios.get(url.toString(), {
     headers: {
@@ -85,7 +84,7 @@ const lmsPost = async (endpoint, tokenPayload, body = {}) => {
   
   const url = `${LMS_API_URL}/api/crossapp${endpoint}`;
   
-  console.log('[LmsApiService] Making POST request to:', url);
+
 
   const response = await axios.post(url, body, {
     headers: {
