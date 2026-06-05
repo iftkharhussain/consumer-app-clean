@@ -388,3 +388,97 @@ exports.updateOrderStatus = async (req, res) => {
     });
   }
 };
+
+/**
+ * Send a quote confirmation email when a user lands on the call/meeting
+ * confirmation page. Forwards to Norga-App (LMS) which renders + sends the email.
+ *
+ * POST /api/product-order/send-confirmation-email
+ * Body: { userProductId, type: 'call' | 'meeting', quote, meetingDate? }
+ *
+ * The recipient is the authenticated user (req.userEmail). A per-type flag is
+ * stored on the order's metadata so a page refresh doesn't resend the email.
+ */
+exports.sendConfirmationEmail = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const email = req.userEmail;
+    const { userProductId, type, quote, meetingDate } = req.body;
+
+    if (!type || !['call', 'meeting'].includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: "type is required and must be 'call' or 'meeting'"
+      });
+    }
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'No email associated with this account'
+      });
+    }
+
+    // Resolve the user's first name for the greeting
+    let firstName = 'client';
+    try {
+      const User = require('../schema/User');
+      const user = await User.findById(userId).select('firstName fullName').lean();
+      firstName = user?.firstName || user?.fullName?.split(' ')[0] || firstName;
+    } catch (userErr) {
+      logger.warn('sendConfirmationEmail: failed to load user name', { error: userErr.message });
+    }
+
+    // Find the related order (for de-duplication across page refreshes)
+    let order = null;
+    if (userProductId) {
+      order = await ProductOrder.findOne({ userProductId, userId }).sort({ createdAt: -1 });
+
+      if (order?.metadata?.confirmationEmailSent?.[type]) {
+        logger.info('sendConfirmationEmail: already sent, skipping', { userProductId, type });
+        return res.json({
+          success: true,
+          alreadySent: true,
+          message: 'Confirmation email already sent'
+        });
+      }
+    }
+
+    // Forward to LMS to render and send the email.
+    // appLeadId lets the LMS enrich the email with lead-side data (e.g. vehicle make/model/year).
+    await lmsApiService.lmsPost('/send-quote-confirmation-email', { type: 'quote_confirmation_email' }, {
+      email,
+      firstName,
+      type,
+      quote: quote || {},
+      meetingDate: meetingDate || null,
+      appLeadId: order?.leadId ? String(order.leadId) : null
+    });
+
+    // Mark as sent so refreshes don't resend
+    if (order) {
+      const sentFlags = { ...(order.metadata?.confirmationEmailSent || {}), [type]: true };
+      order.metadata = { ...order.metadata, confirmationEmailSent: sentFlags };
+      order.markModified('metadata');
+      await order.save();
+    }
+
+    logger.info('ProductOrder.sendConfirmationEmail sent', { userProductId, type, email });
+
+    return res.json({
+      success: true,
+      message: 'Confirmation email sent'
+    });
+
+  } catch (error) {
+    logger.error('ProductOrder.sendConfirmationEmail error', {
+      message: error.message,
+      stack: error.stack
+    });
+
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to send confirmation email'
+    });
+  }
+};
