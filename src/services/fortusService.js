@@ -182,8 +182,63 @@ const getOfficeHoursByLead = async (leadId) => {
   }
 };
 
+/**
+ * Track a call or meeting event for analytics
+ *
+ * Called after the ezLead + email are sent, when the consumer either:
+ *  - lands on the call confirmation page ('call' — "Appeler maintenant"), or
+ *  - completes a Calendly booking ('meeting' — "Planifier un appel plus tard").
+ *
+ * The LMS creates an integration_record (call.scheduled / meeting.scheduled)
+ * that feeds the advisor's "Calls & Meetings" analytics. The LMS dedupes on
+ * page reload, so calling this more than once is safe.
+ *
+ * @param {string} userProductId - consumer_app user_products._id
+ * @param {string} eventType - 'call' | 'meeting'
+ * @returns {Promise<Object>} { success, message, alreadyExists, data }
+ */
+const trackEvent = async (userProductId, eventType, additionalData = {}) => {
+  try {
+    if (!userProductId || !eventType) {
+      throw new Error('userProductId and eventType are required');
+    }
+
+    logger.info('FortusService.trackEvent', { userProductId, eventType, additionalData });
+
+    const result = await lmsPost('/fortus/track-event', {
+      userProductId
+    }, {
+      userProductId,
+      eventType,
+      additionalData
+    });
+
+    return {
+      success: true,
+      message: result.message || 'Event tracked successfully',
+      alreadyExists: result.alreadyExists || false,
+      data: { recordId: result.recordId || null }
+    };
+
+  } catch (error) {
+    logger.error('FortusService.trackEvent error', {
+      userProductId,
+      eventType,
+      message: error.message,
+      response: error.response?.data
+    });
+
+    return {
+      success: false,
+      message: error.response?.data?.message || error.message || 'Failed to track event',
+      error: error.response?.data?.error || 'TRACK_EVENT_FAILED'
+    };
+  }
+};
+
 module.exports = {
   requestCall,
   getOfficeHours,
-  getOfficeHoursByLead
+  getOfficeHoursByLead,
+  trackEvent
 };

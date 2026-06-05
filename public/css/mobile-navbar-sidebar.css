@@ -3,7 +3,7 @@
  * Author: Norga Development Team
  * Description: Separate responsive file for mobile navbar and sidebar
  * Base Design: 375px width for mobile
- * Breakpoints: 375px, 576px, 768px, 992px
+ * Breakpoints: 375px, 576px, 1024px
  */
 
 /* ============================================
@@ -11,7 +11,7 @@
    ============================================ */
 
 /* Mobile Header for 375px and up */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
 
     /* Mobile Header Container */
     .mobile-navbar-header {
@@ -157,9 +157,9 @@
 }
 
 /* ============================================
-   TABLET PORTRAIT: 577px - 768px
+   TABLET PORTRAIT: 577px - 1024px
    ============================================ */
-@media (min-width: 577px) and (max-width: 768px) {
+@media (min-width: 577px) and (max-width: 1024px) {
     .mobile-navbar-header {
         padding: 16px 24px;
     }
@@ -175,20 +175,9 @@
 }
 
 /* ============================================
-   TABLET LANDSCAPE: 769px - 992px
+   DESKTOP: 1025px and up
    ============================================ */
-@media (min-width: 769px) and (max-width: 992px) {
-
-    /* Show desktop sidebar, hide mobile header */
-    .mobile-navbar-header {
-        display: none;
-    }
-}
-
-/* ============================================
-   DESKTOP: 993px and up
-   ============================================ */
-@media (min-width: 993px) {
+@media (min-width: 1025px) {
 
     /* Hide mobile header on desktop */
     .mobile-navbar-header {
@@ -203,7 +192,7 @@
 /* ============================================
    SIDEBAR MOBILE ADJUSTMENTS
    ============================================ */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
 
     /* Modify sidebar header for mobile */
     .appSidebar .app-sidebar-header {
@@ -254,7 +243,7 @@
     display: none;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
     .mobile-only {
         display: flex;
     }
@@ -265,14 +254,14 @@
     display: block;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
     .mobile-hidden {
         display: none !important;
     }
 }
 
 /* Flex utilities for mobile */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
     .mobile-flex {
         display: flex !important;
     }
@@ -323,7 +312,7 @@
 }
 
 /* Ensure touch targets are at least 44x44px */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
     .mobile-navbar-header .menu-icon-button {
         min-width: 40px;
         min-height: 40px;
@@ -335,7 +324,7 @@
    ============================================ */
 
 /* Mobile landscape adjustments */
-@media (max-width: 768px) and (orientation: landscape) {
+@media (max-width: 1024px) and (orientation: landscape) {
     .mobile-navbar-header {
         height: 56px;
         padding: 12px 20px;
@@ -351,7 +340,7 @@
    ============================================ */
 
 @supports (padding: max(0px)) {
-    @media (max-width: 768px) {
+    @media (max-width: 1024px) {
         .mobile-navbar-header {
             padding-left: max(20px, env(safe-area-inset-left));
             padding-right: max(20px, env(safe-area-inset-right));

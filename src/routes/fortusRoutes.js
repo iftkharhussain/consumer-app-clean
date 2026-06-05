@@ -88,4 +88,22 @@ router.post('/test-request-call', fortusController.testRequestCall);
  */
 router.get('/office-hours', fortusController.getOfficeHours);
 
+/**
+ * POST /api/fortus/track-event
+ *
+ * Track a call or meeting event for advisor analytics ("Calls & Meetings").
+ * Called by the consumer app after the ezLead + email are sent:
+ *  - 'call'    → call confirmation page ("Appeler maintenant")
+ *  - 'meeting' → after a successful Calendly booking ("Planifier un appel plus tard")
+ *
+ * Body:
+ * - userProductId: string (required)
+ * - eventType: 'call' | 'meeting' (required)
+ *
+ * Response:
+ * - success: boolean
+ * - alreadyExists: boolean (true if deduped on page reload)
+ */
+router.post('/track-event', fortusController.trackEvent);
+
 module.exports = router;

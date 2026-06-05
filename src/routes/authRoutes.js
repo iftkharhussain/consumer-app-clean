@@ -13,6 +13,11 @@ const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
 const { authMiddleware } = require('../middlewares/auth');
+const {
+  phoneLoginLimiter,
+  emailLoginLimiter,
+  phoneLoginCompleteLimiter,
+} = require('../middlewares/rateLimiter');
 
 /**
  * Traditional Authentication
@@ -24,7 +29,7 @@ const { authMiddleware } = require('../middlewares/auth');
  * Email/password login
  * Body: { email: string, password: string }
  */
-router.post('/login', authController.login);
+router.post('/login', emailLoginLimiter, authController.login);
 
 /**
  * POST /api/auth/phone-login
@@ -32,7 +37,7 @@ router.post('/login', authController.login);
  * Phone-based login Step 1: Verify phone exists
  * Body: { phone: string }
  */
-router.post('/phone-login', authController.phoneLogin);
+router.post('/phone-login', phoneLoginLimiter, authController.phoneLogin);
 
 /**
  * POST /api/auth/phone-login-complete
@@ -40,7 +45,7 @@ router.post('/phone-login', authController.phoneLogin);
  * Phone-based login Step 2: Complete login after OTP verification
  * Body: { phone: string }
  */
-router.post('/phone-login-complete', authController.phoneLoginComplete);
+router.post('/phone-login-complete', phoneLoginCompleteLimiter, authController.phoneLoginComplete);
 
 /**
  * POST /api/auth/register

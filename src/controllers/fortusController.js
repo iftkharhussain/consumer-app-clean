@@ -128,6 +128,7 @@ const requestCall = async (req, res) => {
           leadId: userProduct.leadId,
           productSlug: userProduct.productSlug,
           quoteId: null,
+          quoteTrackingNumber: result?.data?.trackingNumber || null,
           selectedQuote: selectedQuote || null, // Save selected insurer details from frontend
           fortusDeliveryId: result?.data?.deliveryId || result?.data?.fortusLeadId || null,
           status: 'call_requested',
@@ -140,9 +141,10 @@ const requestCall = async (req, res) => {
         });
 
         await productOrder.save();
-        logger.info('ProductOrder created', { 
+        logger.info('ProductOrder created', {
           orderId: productOrder._id,
           selectedInsurer: selectedQuote?.insurerName,
+          quoteTrackingNumber: productOrder.quoteTrackingNumber,
           scheduledForLater: scheduleLater || false
         });
       } else {
@@ -150,18 +152,24 @@ const requestCall = async (req, res) => {
         if (selectedQuote) {
           existingOrder.selectedQuote = selectedQuote;
         }
-        
+
         // Update delivery ID if we just sent it (this happens in ScheduleConfirmation)
         const newDeliveryId = result?.data?.deliveryId || result?.data?.fortusLeadId;
         if (newDeliveryId) {
           existingOrder.fortusDeliveryId = newDeliveryId;
         }
 
+        // Update tracking number if returned from LMS
+        const newTrackingNumber = result?.data?.trackingNumber;
+        if (newTrackingNumber && !existingOrder.quoteTrackingNumber) {
+          existingOrder.quoteTrackingNumber = newTrackingNumber;
+        }
+
         if (scheduleLater) {
           existingOrder.metadata = existingOrder.metadata || {};
           existingOrder.metadata.scheduledForLater = true;
         }
-        
+
         await existingOrder.save();
         logger.info('ProductOrder already exists, updated with latest data', { 
           orderId: existingOrder._id,
@@ -408,8 +416,83 @@ const testRequestCall = async (req, res) => {
   }
 };
 
+/**
+ * Track a call or meeting event for analytics
+ *
+ * POST /api/fortus/track-event
+ * Body: { userProductId: string, eventType: 'call' | 'meeting' }
+ *
+ * Called after the ezLead + email are sent:
+ *  - 'call'    → consumer landed on the call confirmation page ("Appeler maintenant")
+ *  - 'meeting' → consumer completed a Calendly booking ("Planifier un appel plus tard")
+ *
+ * Forwards to the LMS which records the event (deduped on reload). A tracking
+ * failure must never break the consumer UI, so non-validation errors still
+ * return 200 with success:false.
+ */
+const trackEvent = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { userProductId, eventType, additionalData } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    if (!userProductId || !eventType) {
+      return res.status(400).json({
+        success: false,
+        message: 'userProductId and eventType are required'
+      });
+    }
+
+    if (!['call', 'meeting'].includes(eventType)) {
+      return res.status(400).json({
+        success: false,
+        message: 'eventType must be "call" or "meeting"'
+      });
+    }
+
+    // Ensure the product belongs to the authenticated user
+    const userProduct = await UserProduct.findOne({ _id: userProductId, userId });
+    if (!userProduct) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found for this user'
+      });
+    }
+
+    logger.info('FortusController.trackEvent', { userId, userProductId, eventType, additionalData });
+
+    const result = await fortusService.trackEvent(userProductId, eventType, additionalData);
+
+    return res.json({
+      success: result.success,
+      message: result.message,
+      alreadyExists: result.alreadyExists || false,
+      data: result.data || {}
+    });
+
+  } catch (error) {
+    logger.error('FortusController.trackEvent error', {
+      message: error.message,
+      stack: error.stack
+    });
+
+    // Don't hard-fail the UI on a tracking error
+    return res.status(200).json({
+      success: false,
+      message: 'Failed to track event'
+    });
+  }
+};
+
 module.exports = {
   requestCall,
   getOfficeHours,
-  testRequestCall
+  testRequestCall,
+  trackEvent
 };

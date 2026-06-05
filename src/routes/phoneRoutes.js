@@ -8,6 +8,15 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 const logger = require('../utils/logger');
+const { otpVerifyLimiter, createRateLimiter } = require('../middlewares/rateLimiter');
+
+// Rate limiter for sending OTP (prevent SMS abuse)
+const sendOtpLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,       // 15 min window
+  maxAttempts: 10,                 // 10 requests per window
+  blockDurationMs: 30 * 60 * 1000, // block for 30 min
+  keyPrefix: 'send-otp',
+});
 
 // Main backend URL
 const MAIN_BACKEND_URL = process.env.MAIN_BACKEND_URL || 'http://localhost:3024';
@@ -16,7 +25,7 @@ const MAIN_BACKEND_URL = process.env.MAIN_BACKEND_URL || 'http://localhost:3024'
  * POST /api/v1/phone/funnel/send-otp
  * Send OTP code to phone number
  */
-router.post('/funnel/send-otp', async (req, res) => {
+router.post('/funnel/send-otp', sendOtpLimiter, async (req, res) => {
   try {
     const { phoneNumber, channel = 'sms', locale = 'fr' } = req.body;
     
@@ -61,7 +70,7 @@ router.post('/funnel/send-otp', async (req, res) => {
  * GET /api/v1/phone/funnel/verify-otp
  * Verify OTP code
  */
-router.get('/funnel/verify-otp', async (req, res) => {
+router.get('/funnel/verify-otp', otpVerifyLimiter, async (req, res) => {
   try {
     const { otp, phoneNumber, channel = 'sms', locale = 'fr' } = req.query;
     
