@@ -49,6 +49,16 @@ const productOrderSchema = new mongoose.Schema({
     oldYearlyPrice: Number,
     discount: Number,               // Percentage discount if applicable
     isIntactDiscount: Boolean,      // Special Intact 10% discount flag
+    // How the quote was selected. Controls whether the confirmation email shows the quote card:
+    // 'explicit'    = user chose a specific carrier ("Choisir")  -> email SHOWS insurer + price + protections
+    // 'courtika'    = user clicked "Parler à Courtika"            -> email HIDES the quote card (generic message only)
+    // 'personalize' = user clicked "Personnaliser"               -> email HIDES the quote card (generic message only)
+    // NOTE: this does NOT affect what is sent to Fortus Leads (still the cheapest carrier for courtika/personalize).
+    selectionType: {
+      type: String,
+      enum: ['explicit', 'courtika', 'personalize'],
+      default: 'explicit'
+    },
     coverages: [{
       id: String,
       csioCode: String,

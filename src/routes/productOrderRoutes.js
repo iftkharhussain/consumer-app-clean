@@ -14,6 +14,13 @@ router.use(authMiddleware);
 router.get('/check', productOrderController.checkPendingOrder);
 
 /**
+ * POST /api/product-order/send-confirmation-email
+ * Send a quote confirmation email (call or meeting) to the authenticated user.
+ * Body: { userProductId, type: 'call' | 'meeting', quote, meetingDate? }
+ */
+router.post('/send-confirmation-email', productOrderController.sendConfirmationEmail);
+
+/**
  * GET /api/product-order/:userProductId
  * Get full order details including selectedQuote
  * Advisor info will be fetched from LMS when needed
