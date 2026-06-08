@@ -91,8 +91,21 @@ const productOrderSchema = new mongoose.Schema({
     default: null
   },
   metadata: {
-    type: mongoose.Schema.Types.Mixed,
-    default: {}
+    confirmationEmailSent: {
+      call: {
+        type: Boolean,
+        default: false
+      },
+      meeting: {
+        type: Boolean,
+        default: false
+      },
+      sentAt: {
+        call: Date,
+        meeting: Date
+      }
+    },
+    other: mongoose.Schema.Types.Mixed
   }
 }, {
   timestamps: true

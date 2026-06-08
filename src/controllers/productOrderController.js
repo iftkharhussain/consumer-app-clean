@@ -442,6 +442,15 @@ exports.sendConfirmationEmail = async (req, res) => {
           message: 'Confirmation email already sent'
         });
       }
+    } else {
+      logger.warn('sendConfirmationEmail: userProductId is missing or invalid', { userProductId, type });
+    }
+
+    // If order not found, warn and continue (email will still be sent, but de-dup flag won't be saved)
+    if (userProductId && !order) {
+      logger.warn('sendConfirmationEmail: order not found for de-duplication', { userProductId, userId, type });
+      // This could happen if the order hasn't been created yet in Consumer App DB
+      // The email will be sent, but we recommend the frontend also track sent status in localStorage
     }
 
     // Forward to LMS to render and send the email.
@@ -457,10 +466,33 @@ exports.sendConfirmationEmail = async (req, res) => {
 
     // Mark as sent so refreshes don't resend
     if (order) {
-      const sentFlags = { ...(order.metadata?.confirmationEmailSent || {}), [type]: true };
-      order.metadata = { ...order.metadata, confirmationEmailSent: sentFlags };
-      order.markModified('metadata');
-      await order.save();
+      try {
+        // Initialize metadata structure if needed
+        if (!order.metadata) order.metadata = {};
+        if (!order.metadata.confirmationEmailSent) order.metadata.confirmationEmailSent = {};
+        if (!order.metadata.confirmationEmailSent.sentAt) order.metadata.confirmationEmailSent.sentAt = {};
+
+        // Mark email as sent with timestamp
+        order.metadata.confirmationEmailSent[type] = true;
+        order.metadata.confirmationEmailSent.sentAt[type] = new Date();
+
+        order.markModified('metadata');
+        await order.save();
+        logger.info('ProductOrder.sendConfirmationEmail: de-dup flag saved', { 
+          userProductId, 
+          type, 
+          sentAt: order.metadata.confirmationEmailSent.sentAt[type]
+        });
+      } catch (saveErr) {
+        logger.warn('ProductOrder.sendConfirmationEmail: failed to save de-dup flag', { 
+          userProductId, type, error: saveErr.message 
+        });
+        // Don't block email send if save fails - the de-dup was attempted
+      }
+    } else {
+      logger.warn('ProductOrder.sendConfirmationEmail: no order to save de-dup flag (frontend DB check should prevent resend)', { 
+        userProductId, type, email 
+      });
     }
 
     logger.info('ProductOrder.sendConfirmationEmail sent', { userProductId, type, email });
