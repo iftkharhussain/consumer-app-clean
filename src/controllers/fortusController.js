@@ -184,6 +184,75 @@ const requestCall = async (req, res) => {
       });
     }
 
+    // --- CONSUMER EMAIL DISPATCH ---
+    if (req.body.emailType && ['call', 'meeting'].includes(req.body.emailType)) {
+      try {
+        const ProductOrder = require('../schema/ProductOrder');
+        const currentOrder = await ProductOrder.findOne({ userId, userProductId: userProduct._id, status: 'call_requested' });
+
+        const wasAlreadySentToBroker = result?.data?.alreadySent || false;
+
+        if (wasAlreadySentToBroker || currentOrder?.metadata?.confirmationEmailSent?.[req.body.emailType]) {
+          logger.info('Consumer confirmation email skipped: lead already sent to broker or email already sent', {
+            userProductId: userProduct._id,
+            emailType: req.body.emailType,
+            wasAlreadySentToBroker
+          });
+        } else {
+          const User = require('../schema/User');
+          const user = await User.findById(userId).select('email firstName fullName').lean();
+          const email = user?.email;
+          const firstName = user?.firstName || user?.fullName?.split(' ')[0] || 'client';
+
+          if (email) {
+            // Replicate the exact logic that hides the quote details for Courtika/Personalize flows
+            // For meeting flow, selectedQuote is not re-sent from the frontend (it's already in DB),
+            // so fall back to existingOrder.selectedQuote which was saved when "Schedule Later" was clicked.
+            const sq = req.body.selectedQuote || currentOrder?.selectedQuote || existingOrder?.selectedQuote || {};
+            const sqName = sq.insurerName || '';
+            const isCourtikaSearch = sq.isCourtikaSearch || (sqName && sqName.toLowerCase().includes('courtika') && sqName.toLowerCase().includes('magasiner'));
+            const showQuoteDetails = (sq.selectionType || 'explicit') === 'explicit' && !isCourtikaSearch;
+
+            const quoteToEmail = showQuoteDetails 
+              ? sq 
+              : { 
+                  insurerName: null, 
+                  monthlyPrice: null, 
+                  yearlyPrice: null, 
+                  hasDiscount: false, 
+                  discountLabel: null, 
+                  protections: [] 
+                };
+
+            const lmsApiService = require('../services/lmsApiService');
+            await lmsApiService.lmsPost('/send-quote-confirmation-email', { type: 'quote_confirmation_email' }, {
+              email,
+              firstName,
+              type: req.body.emailType,
+              quote: quoteToEmail,
+              meetingDate: req.body.meetingDate || null,
+              appLeadId: userProduct.leadId ? String(userProduct.leadId) : null
+            });
+
+            // Update the ProductOrder flag just like the old controller did
+            if (currentOrder) {
+              const sentFlags = { ...(currentOrder.metadata?.confirmationEmailSent || {}), [req.body.emailType]: true };
+              currentOrder.metadata = { 
+                ...currentOrder.metadata, 
+                confirmationEmailSent: sentFlags 
+              };
+              currentOrder.markModified('metadata');
+              await currentOrder.save();
+            }
+            logger.info('Consumer confirmation email sent automatically via ezLead flow');
+          }
+        }
+      } catch (emailErr) {
+        logger.error('Failed to auto-send confirmation email via ezLead flow', { error: emailErr.message });
+      }
+    }
+    // --- END CONSUMER EMAIL DISPATCH ---
+
     return res.json({
       success: true,
       message: scheduleLater 
