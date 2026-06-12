@@ -4,9 +4,9 @@
   "description": "Consumer App API - Lead Management System",
   "main": "src/app.js",
   "scripts": {
-    "start:local": "nodemon -r dotenv/config src/app.js dotenv_config_path=.env.local",
-    "start:dev": "nodemon -r dotenv/config src/app.js dotenv_config_path=.env.dev",
-    "start:production": "node -r dotenv/config src/app.js dotenv_config_path=.env.production",
+    "start:local": "node init && nodemon -r dotenv/config src/app.js dotenv_config_path=.env.local",
+    "start:dev": "node init && nodemon -r dotenv/config src/app.js dotenv_config_path=.env.dev",
+    "start:production": "node init && node -r dotenv/config src/app.js dotenv_config_path=.env.production",
     "setup:admin": "node scripts/createSuperAdmin.js",
     "import:all": "node scripts/importAll.js",
     "import:postal": "node scripts/importPostalCodes.js",
