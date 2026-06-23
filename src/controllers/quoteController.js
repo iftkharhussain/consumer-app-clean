@@ -82,6 +82,50 @@ const requestQuote = async (req, res) => {
       });
     }
 
+    // ── WinQuote (life / insurance) products: SYNCHRONOUS quote, no polling ──
+    // Fortus (auto) products fall through to the existing async block below, unchanged.
+    if ((userProduct.quoteEngine || 'fortus') === 'winquote') {
+      await userProduct.updateQuoteStatus('fetching');
+
+      logger.info('Requesting LIFE quote from LMS (WinQuote)', {
+        userProductId: userProduct._id,
+        appLeadId: userProduct.appLeadId,   // all_leads._id
+        productSlug: userProduct.productSlug
+      });
+
+      const lifeResult = await quoteService.requestLifeQuoteDirect({
+        leadId: userProduct.appLeadId.toString()  // all_leads._id
+      });
+
+      if (lifeResult.success) {
+        // Synchronous engine → persist result on the user_product and mark success immediately.
+        userProduct.lmsMetadata = {
+          ...(userProduct.lmsMetadata || {}),
+          quoteData: lifeResult.quote
+        };
+        await userProduct.updateQuoteStatus('success'); // saves the doc (incl. lmsMetadata)
+
+        return res.status(200).json({
+          success: true,
+          message: lifeResult.message || 'Life quote generated',
+          status: 'success',
+          quoteProvider: 'winquote',
+          userProductId: userProduct._id,
+          leadId: userProduct.leadId.toString(),
+          quote: lifeResult.quote
+        });
+      }
+
+      await userProduct.updateQuoteStatus('failed', lifeResult.message);
+      return res.status(200).json({
+        success: false,
+        message: lifeResult.message || 'Life quote failed',
+        status: 'failed',
+        userProductId: userProduct._id,
+        error: lifeResult.error
+      });
+    }
+
     // Update quote status to fetching
     await userProduct.updateQuoteStatus('fetching');
 
@@ -609,6 +653,8 @@ const getUserProducts = async (req, res) => {
         productId: up.productId,
         productSlug: up.productSlug,
         productName: up.productName,
+        quoteEngine: up.quoteEngine,
+        advisor: up.advisor || null, // persisted advisor (absolute avatar URL)
         quoteStatus: up.quoteStatus,
         quoteRequestedAt: up.quoteRequestedAt,
         quoteCompletedAt: up.quoteCompletedAt,
@@ -753,6 +799,51 @@ const fetchQuote = async (req, res) => {
       quoteStatus: userProduct.quoteStatus,
       requestId
     });
+
+    // ── WinQuote (life / insurance) products: synchronous; return stored quote or generate ──
+    // Fortus (auto) products fall through to the existing async+poll logic below, unchanged.
+    if ((userProduct.quoteEngine || 'fortus') === 'winquote') {
+      // Already generated -> return the stored quote (reload-safe)
+      if (userProduct.quoteStatus === 'success' && userProduct.lmsMetadata?.quoteData) {
+        return res.status(200).json({
+          success: true,
+          status: 'success',
+          quoteProvider: 'winquote',
+          userProductId: userProduct._id,
+          quote: userProduct.lmsMetadata.quoteData
+        });
+      }
+
+      // Otherwise generate synchronously via WinQuote and persist
+      await userProduct.updateQuoteStatus('fetching');
+      const lifeResult = await quoteService.requestLifeQuoteDirect({
+        leadId: userProduct.appLeadId.toString()
+      });
+
+      if (lifeResult.success) {
+        userProduct.lmsMetadata = {
+          ...(userProduct.lmsMetadata || {}),
+          quoteData: lifeResult.quote
+        };
+        await userProduct.updateQuoteStatus('success'); // saves doc incl. lmsMetadata
+        return res.status(200).json({
+          success: true,
+          status: 'success',
+          quoteProvider: 'winquote',
+          userProductId: userProduct._id,
+          quote: lifeResult.quote
+        });
+      }
+
+      await userProduct.updateQuoteStatus('failed', lifeResult.message);
+      return res.status(200).json({
+        success: false,
+        status: 'failed',
+        userProductId: userProduct._id,
+        message: lifeResult.message || 'Life quote failed',
+        error: lifeResult.error
+      });
+    }
 
     // If quote is already being fetched, check if it's stale (older than 2 minutes)
     if (userProduct.quoteStatus === 'fetching') {

@@ -447,9 +447,73 @@ const recalculateQuote = async ({
   }
 };
 
+/**
+ * Request a LIFE / insurance quote via WinQuote (SYNCHRONOUS).
+ *
+ * Unlike requestQuoteDirect (Fortus, async + polling), the LMS WinQuote endpoint returns the
+ * computed rates in a single call — no quoteId, no polling. The caller persists the result on
+ * the user_product. Used for insurance-category products (engine === 'winquote').
+ *
+ * @param {Object} params
+ * @param {string} params.leadId - all_leads._id (consumer session appLeadId)
+ * @returns {Promise<Object>} { success, status, quote, quoteProvider, message }
+ */
+const requestLifeQuoteDirect = async ({ leadId }) => {
+  try {
+    if (!leadId) {
+      return { success: false, message: 'leadId is required' };
+    }
+
+    // Token carries appLeadId = all_leads._id (same convention as the Fortus path)
+    const token = generateCrossAppToken({ appLeadId: leadId });
+
+    logger.info('QuoteService.requestLifeQuoteDirect', { leadId, lmsUrl: LMS_API_URL });
+
+    const response = await axios.post(
+      `${LMS_API_URL}/api/crossapp/quote-request-life`,
+      { leadId },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        timeout: 30000
+      }
+    );
+
+    return {
+      success: response.data.success,
+      status: response.data.status,               // 'success'
+      message: response.data.message,
+      quoteProvider: response.data.quoteProvider, // 'winquote'
+      quote: response.data.quote,                 // { processed: { records, lowest, highest, plan, faceAmount }, ... }
+      data: response.data
+    };
+
+  } catch (error) {
+    logger.error('QuoteService.requestLifeQuoteDirect error', {
+      message: error.message,
+      response: error.response?.data
+    });
+
+    if (error.response) {
+      return {
+        success: false,
+        message: error.response.data?.message || 'Life quote request failed',
+        error: error.response.data
+      };
+    }
+    if (error.code === 'ECONNREFUSED') {
+      return { success: false, message: 'Unable to connect to quote service', error: 'LMS server is not available' };
+    }
+    return { success: false, message: error.message || 'Life quote request failed', error: error.message };
+  }
+};
+
 module.exports = {
   requestQuote,
   requestQuoteDirect,
+  requestLifeQuoteDirect,
   checkQuoteStatus,
   checkQuoteStatusById,
   getQuotesByLead,

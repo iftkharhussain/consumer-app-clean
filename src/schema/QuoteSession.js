@@ -36,7 +36,14 @@ const quoteSessionSchema = new mongoose.Schema({
     index: true,
     comment: 'all_leads._id from LMS - used for quote queries'
   },
-  
+
+  // Product this session belongs to (e.g. 'car-insurance', 'life-insurance').
+  // Used to scope sessions per product in the UI (e.g. the car sub-menu only shows car sessions).
+  productSlug: {
+    type: String,
+    index: true,
+  },
+
   // Session identification
   sessionId: {
     type: String,

@@ -39,8 +39,21 @@ const getAllAdvisors = async (req, res) => {
       }
     });
 
-    // 3. Return the data to the frontend
-    return res.status(200).json(response.data);
+    // 3. Make advisor avatar URLs absolute.
+    // The LMS returns profilePic as a relative path (e.g. /uploads/profile-images/x.png)
+    // served by the LMS itself — prefix it with the LMS base URL so the consumer app can load it.
+    const data = response.data;
+    if (data && Array.isArray(data.data)) {
+      for (const item of data.data) {
+        const avatar = item?.advisor?.avatar;
+        if (avatar && typeof avatar === 'string' && avatar.startsWith('/') && !avatar.startsWith('//')) {
+          item.advisor.avatar = `${NORGA_API_URL}${avatar}`;
+        }
+      }
+    }
+
+    // 4. Return the data to the frontend
+    return res.status(200).json(data);
 
   } catch (error) {
     console.error('[Advisor Proxy Error]:', error.response?.data || error.message);

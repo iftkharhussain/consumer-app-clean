@@ -53,7 +53,33 @@ const userProductSchema = new mongoose.Schema({
   productName: {
     type: String,
   },
-  
+
+  // Which LMS quote engine this product uses: 'fortus' (auto/P&C) | 'winquote' (life/insurance).
+  // Set from the LMS getLeadProducts response during sync. Defaults to 'fortus' so existing
+  // auto products are unaffected.
+  quoteEngine: {
+    type: String,
+    enum: ['fortus', 'winquote'],
+    default: 'fortus',
+    index: true,
+  },
+
+  // Advisor assigned to this product's lead (persisted from LMS during sync).
+  // avatar is stored as an absolute URL (pointing at the LMS server).
+  advisor: {
+    type: new mongoose.Schema({
+      _id: mongoose.Schema.Types.ObjectId,
+      name: String,
+      email: String,
+      phone: String,
+      type: String,        // profession / title
+      avatar: String,      // absolute URL
+      calendarLink: String,
+      calendarType: String,
+    }, { _id: false }),
+    default: null,
+  },
+
   // Quote session reference (for multiple quotes support)
   quoteSessionId: {
     type: String,

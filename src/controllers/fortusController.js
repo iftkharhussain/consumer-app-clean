@@ -83,10 +83,20 @@ const requestCall = async (req, res) => {
     
     // If scheduleLater is true, skip Fortus API call and just create the order
     if (!scheduleLater) {
-      // Call Fortus service to send the lead
-      // If recalculatedQuote is provided, it will be saved to quote_records in LMS
-      // Pass carrierCode to filter the correct quote in LMS
-      result = await fortusService.requestCall(userProduct.leadId, recalculatedQuote, carrierCode);
+      // Route by quote engine:
+      //  - winquote (life/insurance): notify the advisor (in-app + email), NO ezLeads push
+      //  - fortus (auto): push the lead to ezLeads as before
+      if ((userProduct.quoteEngine || 'fortus') === 'winquote') {
+        result = await fortusService.requestLifeCall(
+          userProduct.leadId,
+          userProduct.lmsMetadata?.quoteData || null
+        );
+      } else {
+        // Call Fortus service to send the lead
+        // If recalculatedQuote is provided, it will be saved to quote_records in LMS
+        // Pass carrierCode to filter the correct quote in LMS
+        result = await fortusService.requestCall(userProduct.leadId, recalculatedQuote, carrierCode);
+      }
 
       if (!result.success) {
         logger.warn('FortusController.requestCall failed', {

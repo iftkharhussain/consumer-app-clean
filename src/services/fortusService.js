@@ -93,11 +93,56 @@ const requestCall = async (leadId, recalculatedQuote = null, carrierCode = null)
 };
 
 /**
+ * Request a call for a LIFE / insurance lead.
+ *
+ * Notifies the assigned advisor (in-app + email) via LMS — does NOT push to ezLeads.
+ *
+ * @param {string} leadId - leads._id (user_products.leadId)
+ * @param {Object} quote - WinQuote result summary for the advisor email (optional)
+ * @returns {Promise<Object>} { success, message, data }
+ */
+const requestLifeCall = async (leadId, quote = null) => {
+  try {
+    if (!leadId) {
+      throw new Error('leadId is required');
+    }
+
+    logger.info('FortusService.requestLifeCall', { leadId });
+
+    // tokenPayload carries appLeadId (-> crossAppData.appLeadId); body carries leadId + quote
+    const result = await lmsPost('/fortus/request-call-life',
+      { appLeadId: leadId },
+      { leadId, quote }
+    );
+
+    return {
+      success: true,
+      message: result.message || 'Call request sent successfully',
+      data: result.data || {}
+    };
+
+  } catch (error) {
+    logger.error('FortusService.requestLifeCall error', {
+      leadId,
+      message: error.message,
+      response: error.response?.data
+    });
+
+    const errorData = error.response?.data || {};
+    return {
+      success: false,
+      message: errorData.message || error.message || 'Failed to request call',
+      error: errorData.error || 'REQUEST_FAILED'
+    };
+  }
+};
+
+/**
  * Get office hours for an advisor
- * 
+ *
  * Used to display office hours info to consumer.
  * This is for DISPLAY purposes only - not for blocking requests.
- * 
+ *
  * @param {string} advisorId - The advisor ID
  * @returns {Promise<Object>} { success, officeHours, isCurrentlyOpen, timezone }
  */
@@ -240,6 +285,7 @@ const trackEvent = async (userProductId, eventType, additionalData = {}, appLead
 
 module.exports = {
   requestCall,
+  requestLifeCall,
   getOfficeHours,
   getOfficeHoursByLead,
   trackEvent

@@ -170,6 +170,7 @@ async function getQuoteSessions(req, res) {
     // Format sessions for frontend
     const formattedSessions = sessions.map(session => ({
       sessionId: session.sessionId,
+      productSlug: session.productSlug || null,
       label: {
         primary: formatDateWithTime(session.label?.createdDate || session.createdAt),
         secondary: session.label?.vehicleName || 'Assurance Auto'

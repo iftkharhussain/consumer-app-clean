@@ -163,18 +163,28 @@ async function syncLeadProducts(userId, leadId, quoteData = null, appLeadId = nu
     const leadProducts = result.products;
     logger.info('Found lead products from LMS API', { leadId, count: leadProducts.length });
 
-    // Get appLeadId from the first product or use leadId as fallback
+    // The token's `leadId` IS the all_leads._id (external-facing id).
+    // The LMS returns each lead_product with:
+    //   lp.leadId    = internal leads._id
+    //   lp.appLeadId = all_leads._id  (matches the token's leadId)
+    // Capture the external-facing id from the resolved products for the QuoteSession
+    // fallback + logging below. (Previously this read lp.leadId, the internal id, which
+    // was a mislabel that happened to be masked because user_products reads lp.appLeadId directly.)
     let appLeadId = null;
-    if (leadProducts.length > 0 && leadProducts[0].leadId) {
-      appLeadId = leadProducts[0].leadId.toString();
+    if (leadProducts.length > 0 && leadProducts[0].appLeadId) {
+      appLeadId = leadProducts[0].appLeadId.toString();
     }
-    
-    // Filter to only products for THIS lead
-    // Note: lead_products.leadId might point to all_leads._id OR all_leads.appLeadId
+
+    // Filter to only products for THIS lead. The LMS already scopes results to this lead,
+    // so this is a defensive check only. Match primarily on the all_leads._id (lp.appLeadId,
+    // which equals the token's leadId), and fall back to lp.leadId to cover the duplicate-lead
+    // case where all_leads.appLeadId === all_leads._id. Behaviour-preserving: keeps the same
+    // products as before for both new and duplicate leads.
+    const tokenAllLeadsId = leadId.toString();
     const filteredProducts = leadProducts.filter(lp => {
-      if (!lp.leadId) return false;
-      const lpLeadId = lp.leadId.toString();
-      return lpLeadId === leadId.toString() || (appLeadId && lpLeadId === appLeadId);
+      const lpAppLeadId = lp.appLeadId ? lp.appLeadId.toString() : null;
+      const lpLeadId = lp.leadId ? lp.leadId.toString() : null;
+      return lpAppLeadId === tokenAllLeadsId || lpLeadId === tokenAllLeadsId;
     });
     
     if (filteredProducts.length === 0) {
@@ -193,14 +203,34 @@ async function syncLeadProducts(userId, leadId, quoteData = null, appLeadId = nu
       total: leadProducts.length 
     });
 
+    // Build advisor object from LMS lead product, making the avatar an absolute LMS URL
+    const LMS_BASE_URL = process.env.NORGA_APP_SERVER || 'http://localhost:3024';
+    const buildAdvisor = (a) => {
+      if (!a) return null;
+      let avatar = a.avatar || '';
+      if (avatar && avatar.startsWith('/') && !avatar.startsWith('//')) {
+        avatar = `${LMS_BASE_URL}${avatar}`;
+      }
+      return { ...a, avatar };
+    };
+
     const syncedProducts = [];
 
     for (const lp of filteredProducts) {
       // Product info is already included in the API response
       const product = lp.product;
 
-      // Extract vehicle name from this product's content for session label
-      let vehicleName = 'Assurance Auto';
+      // Session label: default to the product's own label (so a life lead is NOT labelled
+      // "Assurance Auto"). For car products this default is overridden by the vehicle name below.
+      const PRODUCT_LABELS = {
+        'car-insurance': 'Assurance auto',
+        'life-insurance': 'Assurance vie',
+        'home-insurance': 'Assurance habitation',
+        'mortgage-insurance': 'Assurance hypothécaire',
+        'disability': 'Assurance salaire',
+        'critical-illness': 'Assurance maladies graves',
+      };
+      let vehicleName = PRODUCT_LABELS[product?.slug] || product?.name || product?.title || 'Soumission';
       if (lp.content) {
         try {
           const content = typeof lp.content === 'string' 
@@ -273,6 +303,7 @@ async function syncLeadProducts(userId, leadId, quoteData = null, appLeadId = nu
           userId,
           leadId: lp.leadId ? new mongoose.Types.ObjectId(lp.leadId) : leadObjectId,
           appLeadId: lp.appLeadId ? new mongoose.Types.ObjectId(lp.appLeadId) : (appLeadId ? new mongoose.Types.ObjectId(appLeadId) : leadObjectId),
+          productSlug: product?.slug || null,
           sessionId,
           label: {
             vehicleName,
@@ -359,7 +390,14 @@ async function syncLeadProducts(userId, leadId, quoteData = null, appLeadId = nu
         
         // Update leadProductId to the current one
         existingProduct.leadProductId = lp._id;
-        
+
+        // Update quote engine from LMS (fortus | winquote); default keeps existing/fortus
+        existingProduct.quoteEngine = lp.quoteEngine || existingProduct.quoteEngine || 'fortus';
+
+        // Persist the assigned advisor (absolute avatar URL)
+        const advUpd = buildAdvisor(lp.advisor);
+        if (advUpd) existingProduct.advisor = advUpd;
+
         // Link to quote session
         existingProduct.quoteSessionId = quoteSession.sessionId;
         
@@ -393,6 +431,8 @@ async function syncLeadProducts(userId, leadId, quoteData = null, appLeadId = nu
           productId: product?._id || lp.productId,
           productSlug,
           productName,
+          quoteEngine: lp.quoteEngine || 'fortus', // 'fortus' (auto) | 'winquote' (life/insurance)
+          advisor: buildAdvisor(lp.advisor), // assigned advisor (absolute avatar URL)
           quoteSessionId: quoteSession.sessionId, // Link to session
           status: 'active',
           quoteStatus: 'not_requested',
