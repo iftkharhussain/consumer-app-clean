@@ -29,7 +29,7 @@ const logger = require('../utils/logger');
  * @param {string} carrierCode - Optional carrier code to filter the correct quote (e.g., 'UNI', 'GC', 'PAFM')
  * @returns {Promise<Object>} { success, message, data }
  */
-const requestCall = async (leadId, recalculatedQuote = null, carrierCode = null) => {
+const requestCall = async (leadId, recalculatedQuote = null, carrierCode = null, position = null, buttonName = null) => {
   try {
     if (!leadId) {
       throw new Error('leadId is required');
@@ -38,7 +38,9 @@ const requestCall = async (leadId, recalculatedQuote = null, carrierCode = null)
     logger.info('FortusService.requestCall', { 
       leadId,
       hasRecalculatedQuote: !!recalculatedQuote,
-      carrierCode: carrierCode || 'not specified'
+      carrierCode: carrierCode || 'not specified',
+      position: position || 'not specified',
+      buttonName: buttonName || 'not specified'
     });
 
     // Build request body - include recalculatedQuote if provided
@@ -56,9 +58,20 @@ const requestCall = async (leadId, recalculatedQuote = null, carrierCode = null)
       requestBody.carrierCode = carrierCode;
     }
 
+    if (position) {
+      requestBody.position = position;
+    }
+
+    if (buttonName) {
+      requestBody.buttonName = buttonName;
+    }
+
     const result = await lmsPost('/fortus/request-call', requestBody, {
       leadId,
-      carrierCode
+      carrierCode,
+      recalculatedQuote,
+      position,
+      buttonName
     });
 
     logger.info('FortusService.requestCall success', { 

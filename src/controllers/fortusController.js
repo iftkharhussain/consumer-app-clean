@@ -29,7 +29,7 @@ const logger = require('../utils/logger');
 const requestCall = async (req, res) => {
   try {
     const userId = req.userId;
-    const { userProductId, productSlug, selectedQuote, recalculatedQuote, carrierCode, scheduleLater } = req.body;
+    const { userProductId, productSlug, selectedQuote, recalculatedQuote, carrierCode, scheduleLater, position, buttonName } = req.body;
 
     if (!userId) {
       return res.status(401).json({
@@ -76,7 +76,9 @@ const requestCall = async (req, res) => {
       leadId: userProduct.leadId,
       hasRecalculatedQuote: !!recalculatedQuote,
       carrierCode: carrierCode || 'not specified',
-      scheduleLater: scheduleLater || false
+      scheduleLater: scheduleLater || false,
+      position: position || 'not specified',
+      buttonName: buttonName || 'not specified'
     });
 
     let result = null;
@@ -86,7 +88,7 @@ const requestCall = async (req, res) => {
       // Call Fortus service to send the lead
       // If recalculatedQuote is provided, it will be saved to quote_records in LMS
       // Pass carrierCode to filter the correct quote in LMS
-      result = await fortusService.requestCall(userProduct.leadId, recalculatedQuote, carrierCode);
+      result = await fortusService.requestCall(userProduct.leadId, recalculatedQuote, carrierCode, position, buttonName);
 
       if (!result.success) {
         logger.warn('FortusController.requestCall failed', {
@@ -136,7 +138,11 @@ const requestCall = async (req, res) => {
           metadata: {
             scheduledForLater: scheduleLater || false,
             alreadySent: result?.data?.alreadySent || false,
-            sentAt: result?.data?.sentAt || new Date()
+            sentAt: result?.data?.sentAt || new Date(),
+            other: {
+              position: position || null,
+              buttonName: buttonName || null
+            }
           }
         });
 
@@ -168,6 +174,14 @@ const requestCall = async (req, res) => {
         if (scheduleLater) {
           existingOrder.metadata = existingOrder.metadata || {};
           existingOrder.metadata.scheduledForLater = true;
+        }
+
+        if (position || buttonName) {
+          existingOrder.metadata = existingOrder.metadata || {};
+          existingOrder.metadata.other = existingOrder.metadata.other || {};
+          if (position) existingOrder.metadata.other.position = position;
+          if (buttonName) existingOrder.metadata.other.buttonName = buttonName;
+          existingOrder.markModified('metadata');
         }
 
         await existingOrder.save();
