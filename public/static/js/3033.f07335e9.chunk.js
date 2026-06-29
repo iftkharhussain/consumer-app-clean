@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkconsumer_app_react=self.webpackChunkconsumer_app_react||[]).push([[3033],{3033:(e,s,a)=>{a.r(s),a.d(s,{default:()=>r});a(9950);var c=a(9873),p=a(4414);const r=()=>(0,p.jsx)(c.A,{})}}]);
