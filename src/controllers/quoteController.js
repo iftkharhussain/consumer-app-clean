@@ -655,6 +655,9 @@ const getUserProducts = async (req, res) => {
         productName: up.productName,
         quoteEngine: up.quoteEngine,
         advisor: up.advisor || null, // persisted advisor (absolute avatar URL)
+        // Submitted form data (the lead notes), so result pages can show the
+        // user's actual inputs (coverage, needs, etc.) instead of placeholders.
+        submission: up.lmsMetadata?.content || null,
         quoteStatus: up.quoteStatus,
         quoteRequestedAt: up.quoteRequestedAt,
         quoteCompletedAt: up.quoteCompletedAt,

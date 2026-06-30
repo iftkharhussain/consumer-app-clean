@@ -49,8 +49,21 @@ function getProductRedirectUrl(product) {
     'habitation': '/home-insurance',
     'life-insurance': '/life-insurance',
     'assurance-vie': '/life-insurance',
+    'vie': '/life-insurance',
     'travel-insurance': '/travel-insurance',
     'assurance-voyage': '/travel-insurance',
+    // Critical illness (WinQuote) — LMS product titles: "Maladie grave" / "Critical illness insurance"
+    'critical-illness': '/critical-illness',
+    'critical-illness-insurance': '/critical-illness',
+    'maladie-grave': '/critical-illness',
+    'assurance-maladie-grave': '/critical-illness',
+    // Disability / income protection (WinQuote) — titles: "Disability insurance" / "Invalidité"
+    'disability': '/disability',
+    'disability-insurance': '/disability',
+    'invalidité': '/disability',
+    'invalidite': '/disability',
+    'assurance-salaire': '/disability',
+    'salaire': '/disability',
   };
 
   // Check for exact match first
