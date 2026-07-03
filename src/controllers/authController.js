@@ -64,6 +64,18 @@ function getProductRedirectUrl(product) {
     'invalidite': '/disability',
     'assurance-salaire': '/disability',
     'salaire': '/disability',
+    // Mortgage insurance (WinQuote, borrowers-aware) — titles: "Mortgage insurance" / "Ass. hypothécaire"
+    'mortgage-insurance': '/mortgage-insurance',
+    'assurance-hypothécaire': '/mortgage-insurance',
+    'assurance-hypothecaire': '/mortgage-insurance',
+    'ass.-hypothécaire': '/mortgage-insurance',
+    'ass.-hypothecaire': '/mortgage-insurance',
+    'hypothécaire': '/mortgage-insurance',
+    'hypothecaire': '/mortgage-insurance',
+    // Mortgage-broker (no price — manual rate page). Title: "Renouvellement hypothecaire"
+    'mortgage-renew': '/mortgage-renew',
+    'renouvellement-hypothecaire': '/mortgage-renew',
+    'renouvellement-hypothécaire': '/mortgage-renew',
   };
 
   // Check for exact match first

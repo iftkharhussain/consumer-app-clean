@@ -122,7 +122,7 @@ const requestQuoteDirect = async ({
         timeout: 30000  // Reduced timeout since LMS returns immediately now
       }
     );
-    
+
     return {
       success: response.data.success,
       message: response.data.message,
@@ -477,7 +477,9 @@ const requestLifeQuoteDirect = async ({ leadId }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        timeout: 30000
+        // WinQuote is synchronous and calls the external API per borrower; give
+        // multi-life mortgage quotes room beyond the default 30s.
+        timeout: 60000
       }
     );
 
