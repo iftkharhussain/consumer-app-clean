@@ -604,6 +604,16 @@ async function leadLogin(req, res) {
     // Record the login
     await user.recordLogin('lead-token');
 
+    // Backfill the name on an existing account that was created before the name
+    // was captured (older leads, or the earlier token-name bug).
+    if (!isNew && tokenData.fullName && !user.firstName && !user.lastName) {
+      const parts = String(tokenData.fullName).trim().split(' ');
+      user.firstName = tokenData.firstName || parts[0] || '';
+      user.lastName = tokenData.lastName || parts.slice(1).join(' ') || '';
+      if (!user.fullName) user.fullName = tokenData.fullName;
+      await user.save().catch((e) => logger.warn('Name backfill failed', { error: e.message }));
+    }
+
        if (isNew) {
       console.log(' NEW USER CREATED:', user.email, user.fullName);
       
