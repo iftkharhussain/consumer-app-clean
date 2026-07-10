@@ -645,26 +645,55 @@ const getUserProducts = async (req, res) => {
 
     const userProducts = await UserProduct.findByUserId(userId);
 
-    return res.status(200).json({
-      success: true,
-      products: userProducts.map(up => ({
-        id: up._id,
-        leadId: up.leadId,
-        productId: up.productId,
-        productSlug: up.productSlug,
-        productName: up.productName,
-        quoteEngine: up.quoteEngine,
-        advisor: up.advisor || null, // persisted advisor (absolute avatar URL)
+    const products = userProducts.map(up => {
+      const o = up.toObject ? up.toObject() : up;
+      return {
+        id: o._id,
+        leadId: o.leadId,
+        productId: o.productId,
+        productSlug: o.productSlug,
+        productName: o.productName,
+        quoteEngine: o.quoteEngine,
+        advisor: o.advisor || null, // persisted advisor (absolute avatar URL)
         // Submitted form data (the lead notes), so result pages can show the
         // user's actual inputs (coverage, needs, etc.) instead of placeholders.
-        submission: up.lmsMetadata?.content || null,
-        quoteStatus: up.quoteStatus,
-        quoteRequestedAt: up.quoteRequestedAt,
-        quoteCompletedAt: up.quoteCompletedAt,
-        status: up.status,
-        createdAt: up.createdAt
-      }))
+        submission: o.lmsMetadata?.content || null,
+        quoteStatus: o.quoteStatus,
+        quoteRequestedAt: o.quoteRequestedAt,
+        quoteCompletedAt: o.quoteCompletedAt,
+        status: o.status,
+        createdAt: o.createdAt
+      };
     });
+
+    // Enrich each advisor's calendar link LIVE. The advisor is persisted on the
+    // product at lead-login time, so a link the advisor sets/changes afterwards
+    // wouldn't otherwise show. Best-effort — keep the persisted value on any failure.
+    try {
+      if (products.some(p => p.advisor && p.advisor._id)) {
+        const User = require('../schema/User');
+        const user = await User.findById(userId).select('email').lean();
+        if (user?.email) {
+          const adv = await lmsApiService.lmsGet('/all-advisors', { source: 'consumer-app' }, { email: user.email });
+          const liveMap = {};
+          (adv?.data || []).forEach(item => {
+            const a = item?.advisor;
+            if (a && a._id) liveMap[String(a._id)] = { calendarLink: a.calendarLink || '', calendarType: a.calendarType || 'none' };
+          });
+          products.forEach(p => {
+            const live = p.advisor && liveMap[String(p.advisor._id)];
+            if (live) {
+              p.advisor.calendarLink = live.calendarLink;
+              p.advisor.calendarType = live.calendarType;
+            }
+          });
+        }
+      }
+    } catch (e) {
+      logger.error('getUserProducts: live advisor calendar enrichment failed', { message: e.message });
+    }
+
+    return res.status(200).json({ success: true, products });
 
   } catch (error) {
     logger.error('QuoteController.getUserProducts error', {
