@@ -1599,6 +1599,68 @@ const recalculateQuote = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/quote/personalize-life
+ * Re-price the user's life (WinQuote) product with a new term (plan) and/or coverage
+ * amount from the "Personnaliser" popup, persist the new quote, and return it.
+ * Body: { plan?, faceAmount?, productSlug? }
+ */
+const personalizeLifeQuote = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { plan, faceAmount, productSlug = 'life-insurance' } = req.body || {};
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+    if (!plan && (faceAmount === undefined || faceAmount === null || faceAmount === '')) {
+      return res.status(400).json({ success: false, message: 'plan or faceAmount is required' });
+    }
+
+    const userProduct = await UserProduct.findByUserAndSlug(userId, productSlug);
+    if (!userProduct) {
+      return res.status(404).json({ success: false, message: 'Product not found for this user' });
+    }
+    if ((userProduct.quoteEngine || 'fortus') !== 'winquote') {
+      return res.status(400).json({ success: false, message: 'Personalization is only available for life/insurance quotes' });
+    }
+
+    const overrides = {};
+    if (plan) overrides.plan = plan;
+    if (faceAmount !== undefined && faceAmount !== null && faceAmount !== '') overrides.faceAmount = Number(faceAmount);
+
+    await userProduct.updateQuoteStatus('fetching');
+    const lifeResult = await quoteService.requestLifeQuoteDirect({
+      leadId: userProduct.appLeadId.toString(),
+      overrides
+    });
+
+    if (lifeResult.success) {
+      userProduct.lmsMetadata = { ...(userProduct.lmsMetadata || {}), quoteData: lifeResult.quote };
+      await userProduct.updateQuoteStatus('success'); // saves doc incl. lmsMetadata
+      return res.status(200).json({
+        success: true,
+        status: 'success',
+        quoteProvider: 'winquote',
+        userProductId: userProduct._id,
+        quote: lifeResult.quote
+      });
+    }
+
+    await userProduct.updateQuoteStatus('failed', lifeResult.message);
+    return res.status(200).json({
+      success: false,
+      status: 'failed',
+      userProductId: userProduct._id,
+      message: lifeResult.message || 'Life quote personalization failed',
+      error: lifeResult.error
+    });
+  } catch (error) {
+    logger.error('QuoteController.personalizeLifeQuote error', { message: error.message });
+    return res.status(500).json({ success: false, message: 'An error occurred while personalizing the quote' });
+  }
+};
+
 module.exports = {
   requestQuote,
   requestQuoteDirect,
@@ -1612,5 +1674,7 @@ module.exports = {
   pollQuoteStatus,
   getQuotesByLead,
   // Recalculate quote
-  recalculateQuote
+  recalculateQuote,
+  // Life personalizer (term / coverage amount re-price)
+  personalizeLifeQuote
 };

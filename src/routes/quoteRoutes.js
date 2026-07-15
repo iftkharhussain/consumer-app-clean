@@ -230,4 +230,13 @@ router.get('/by-lead/:leadId', quoteController.getQuotesByLead);
  */
 router.post('/recalculate', quoteController.recalculateQuote);
 
+/**
+ * POST /api/quote/personalize-life
+ * Re-price the user's life (WinQuote) product from the "Personnaliser" popup with a
+ * new term and/or coverage amount, persist it, and return the updated quote.
+ *
+ * Body: { plan?: string, faceAmount?: number, productSlug?: string }
+ */
+router.post('/personalize-life', quoteController.personalizeLifeQuote);
+
 module.exports = router;
