@@ -88,7 +88,7 @@ const requestCall = async (req, res) => {
       // Call Fortus service to send the lead
       // If recalculatedQuote is provided, it will be saved to quote_records in LMS
       // Pass carrierCode to filter the correct quote in LMS
-      result = await fortusService.requestCall(userProduct.leadId, recalculatedQuote, carrierCode, position, buttonName);
+      result = await fortusService.requestCall(userProduct.leadId, recalculatedQuote, carrierCode, position, buttonName, req.body.emailType);
 
       if (!result.success) {
         logger.warn('FortusController.requestCall failed', {

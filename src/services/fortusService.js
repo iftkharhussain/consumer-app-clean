@@ -29,7 +29,7 @@ const logger = require('../utils/logger');
  * @param {string} carrierCode - Optional carrier code to filter the correct quote (e.g., 'UNI', 'GC', 'PAFM')
  * @returns {Promise<Object>} { success, message, data }
  */
-const requestCall = async (leadId, recalculatedQuote = null, carrierCode = null, position = null, buttonName = null) => {
+const requestCall = async (leadId, recalculatedQuote = null, carrierCode = null, position = null, buttonName = null, emailType = null) => {
   try {
     if (!leadId) {
       throw new Error('leadId is required');
@@ -64,6 +64,11 @@ const requestCall = async (leadId, recalculatedQuote = null, carrierCode = null,
 
     if (buttonName) {
       requestBody.buttonName = buttonName;
+    }
+
+    // 'meeting' (Calendly booking) vs 'call' — LMS skips the confirmation SMS for meetings
+    if (emailType) {
+      requestBody.emailType = emailType;
     }
 
     const result = await lmsPost('/fortus/request-call', requestBody, {
