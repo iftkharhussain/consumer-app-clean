@@ -2,6 +2,10 @@
  * Consumer App API - Main Application File
  */
 
+// Force the entire process to UTC so all date math and formatting are
+// timezone-independent. Must run before any other module creates a Date.
+process.env.TZ = 'UTC';
+
 // Load environment variables based on NODE_ENV or env file argument
 const path = require('path');
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
