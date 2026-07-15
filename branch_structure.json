@@ -1,0 +1,24 @@
+{
+  "default_branch": "main",
+  "branches": [
+    "main",
+    "multiple-product-setup",
+    "origin",
+    "warda",
+    "warda-dev"
+  ],
+  "parent": {
+    "main": null,
+    "multiple-product-setup": "main",
+    "origin": "main",
+    "warda": "main",
+    "warda-dev": "warda"
+  },
+  "order": [
+    "main",
+    "multiple-product-setup",
+    "origin",
+    "warda",
+    "warda-dev"
+  ]
+}

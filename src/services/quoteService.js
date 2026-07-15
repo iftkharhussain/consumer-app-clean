@@ -458,7 +458,7 @@ const recalculateQuote = async ({
  * @param {string} params.leadId - all_leads._id (consumer session appLeadId)
  * @returns {Promise<Object>} { success, status, quote, quoteProvider, message }
  */
-const requestLifeQuoteDirect = async ({ leadId }) => {
+const requestLifeQuoteDirect = async ({ leadId, overrides }) => {
   try {
     if (!leadId) {
       return { success: false, message: 'leadId is required' };
@@ -467,11 +467,12 @@ const requestLifeQuoteDirect = async ({ leadId }) => {
     // Token carries appLeadId = all_leads._id (same convention as the Fortus path)
     const token = generateCrossAppToken({ appLeadId: leadId });
 
-    logger.info('QuoteService.requestLifeQuoteDirect', { leadId, lmsUrl: LMS_API_URL });
+    logger.info('QuoteService.requestLifeQuoteDirect', { leadId, lmsUrl: LMS_API_URL, overrides: overrides || null });
 
     const response = await axios.post(
       `${LMS_API_URL}/api/crossapp/quote-request-life`,
-      { leadId },
+      // Personalizer sends { plan, faceAmount } as overrides to re-price the quote.
+      { leadId, ...(overrides && Object.keys(overrides).length ? { overrides } : {}) },
       {
         headers: {
           'Content-Type': 'application/json',
