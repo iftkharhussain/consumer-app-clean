@@ -66,17 +66,16 @@ const requestCall = async (leadId, recalculatedQuote = null, carrierCode = null,
       requestBody.buttonName = buttonName;
     }
 
+    // lmsPost(endpoint, tokenPayload, body): requestBody is the token payload,
+    // the third argument is the HTTP body the LMS reads via req.body.
     // 'meeting' (Calendly booking) vs 'call' — LMS skips the confirmation SMS for meetings
-    if (emailType) {
-      requestBody.emailType = emailType;
-    }
-
     const result = await lmsPost('/fortus/request-call', requestBody, {
       leadId,
       carrierCode,
       recalculatedQuote,
       position,
-      buttonName
+      buttonName,
+      emailType
     });
 
     logger.info('FortusService.requestCall success', { 
