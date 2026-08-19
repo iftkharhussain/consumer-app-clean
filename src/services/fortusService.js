@@ -130,11 +130,12 @@ const getOfficeHours = async (advisorId) => {
       advisorId
     });
 
+    // LMS returns officeHours/currentStatus at the top level - there is no `data` wrapper
     return {
       success: true,
-      officeHours: result.data?.officeHours || null,
-      isCurrentlyOpen: result.data?.isCurrentlyOpen || false,
-      timezone: result.data?.timezone || 'America/Toronto',
+      officeHours: result.officeHours || null,
+      isCurrentlyOpen: result.currentStatus?.isOpen ?? false,
+      timezone: result.officeHours?.timezone || 'America/Toronto',
       message: result.message
     };
 
@@ -174,12 +175,13 @@ const getOfficeHoursByLead = async (leadId) => {
       appLeadId: leadId
     });
 
+    // LMS returns officeHours/currentStatus at the top level - there is no `data` wrapper
     return {
       success: true,
-      officeHours: result.data?.officeHours || null,
-      isCurrentlyOpen: result.data?.isCurrentlyOpen || false,
-      timezone: result.data?.timezone || 'America/Toronto',
-      advisorId: result.data?.advisorId,
+      officeHours: result.officeHours || null,
+      isCurrentlyOpen: result.currentStatus?.isOpen ?? false,
+      timezone: result.officeHours?.timezone || 'America/Toronto',
+      advisorId: result.advisorId,
       message: result.message
     };
 
