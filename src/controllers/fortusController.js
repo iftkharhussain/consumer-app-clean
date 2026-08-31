@@ -248,13 +248,16 @@ const requestCall = async (req, res) => {
               appLeadId: userProduct.leadId ? String(userProduct.leadId) : null
             });
 
-            // Update the ProductOrder flag just like the old controller did
+            // Update the ProductOrder flag. `metadata.confirmationEmailSent.sentAt` is a nested
+            // object in the schema ({ call: Date, meeting: Date }), so it must be initialized
+            // before assignment — otherwise a spread leaves sentAt undefined and the save throws
+            // "Cast to Object failed". (Mirror productOrderController's safe init.)
             if (currentOrder) {
-              const sentFlags = { ...(currentOrder.metadata?.confirmationEmailSent || {}), [req.body.emailType]: true };
-              currentOrder.metadata = { 
-                ...currentOrder.metadata, 
-                confirmationEmailSent: sentFlags 
-              };
+              if (!currentOrder.metadata) currentOrder.metadata = {};
+              if (!currentOrder.metadata.confirmationEmailSent) currentOrder.metadata.confirmationEmailSent = {};
+              if (!currentOrder.metadata.confirmationEmailSent.sentAt) currentOrder.metadata.confirmationEmailSent.sentAt = {};
+              currentOrder.metadata.confirmationEmailSent[req.body.emailType] = true;
+              currentOrder.metadata.confirmationEmailSent.sentAt[req.body.emailType] = new Date();
               currentOrder.markModified('metadata');
               await currentOrder.save();
             }
