@@ -1,7 +1,5 @@
 node_modules/
-.env.local
 .env.dev
-.env.production
 .DS_Store
 *.log
 npm-debug.log*
@@ -11,7 +9,6 @@ coverage/
 .nyc_output/
 dist/
 build/
-.vscode/
 .idea/
 phase1.text
 Fortus documentation
@@ -27,3 +24,5 @@ graphify-out/
 .claude
 temp_auto_push.bat
 temp_interactive_push.bat
+branch_structure.json
+config.bat
